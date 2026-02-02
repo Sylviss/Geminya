@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { guessAnimeApi } from '../api/client'
 import DifficultySelector from '../components/common/DifficultySelector'
 import SearchInput from '../components/common/SearchInput'
+import { proxyMediaUrl } from '../utils/mediaProxy'
 
 interface GameState {
     gameId: string
@@ -263,7 +264,7 @@ export default function GuessAnime() {
                     <div className="flex flex-col md:flex-row gap-6 items-center md:items-start text-left mb-6">
                         {gameState.target.image && (
                             <img
-                                src={gameState.target.image}
+                                src={proxyMediaUrl(gameState.target.image)}
                                 alt={gameState.target.title}
                                 className="w-48 h-auto rounded-lg shadow-xl flex-shrink-0"
                             />
@@ -306,14 +307,14 @@ export default function GuessAnime() {
                                         className={`flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${selectedScreenshotIndex === index ? 'border-anime-accent scale-105' : 'border-transparent opacity-70 hover:opacity-100'
                                             }`}
                                     >
-                                        <img src={ss} alt={`Screenshot ${index + 1}`} className="w-20 h-14 object-cover" />
+                                        <img src={proxyMediaUrl(ss)} alt={`Screenshot ${index + 1}`} className="w-20 h-14 object-cover" />
                                     </button>
                                 ))}
                             </div>
                             {/* Large preview of selected screenshot */}
                             <div className="mt-4 rounded-xl overflow-hidden shadow-xl max-w-2xl mx-auto">
                                 <img
-                                    src={gameState.allScreenshots[selectedScreenshotIndex]}
+                                    src={proxyMediaUrl(gameState.allScreenshots[selectedScreenshotIndex])}
                                     alt="Selected screenshot"
                                     className="w-full h-auto"
                                 />
@@ -379,7 +380,7 @@ export default function GuessAnime() {
                             </div>
                         )}
                         <img
-                            src={gameState.currentScreenshot}
+                            src={proxyMediaUrl(gameState.currentScreenshot)}
                             alt="Anime screenshot"
                             className="w-full h-auto animate-fade-in"
                             key={gameState.currentStage}

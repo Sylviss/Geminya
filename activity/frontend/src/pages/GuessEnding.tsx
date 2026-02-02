@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { guessEdApi } from '../api/client'
 import DifficultySelector from '../components/common/DifficultySelector'
 import SearchInput from '../components/common/SearchInput'
+import { proxyMediaUrl } from '../utils/mediaProxy'
 
 interface GameState {
     gameId: string
@@ -197,7 +198,7 @@ export default function GuessEnding() {
 
                     {gameState.target.image && (
                         <img
-                            src={gameState.target.image}
+                            src={proxyMediaUrl(gameState.target.image)}
                             alt={gameState.target.title}
                             className="w-48 h-auto mx-auto rounded-lg shadow-xl my-4"
                         />
@@ -282,7 +283,7 @@ export default function GuessEnding() {
                                 controls
                                 autoPlay
                                 className="w-full"
-                                src={gameState.themeUrl}
+                                src={proxyMediaUrl(gameState.themeUrl)}
                             >
                                 Your browser does not support the audio element.
                             </audio>
@@ -293,7 +294,7 @@ export default function GuessEnding() {
                             controls
                             autoPlay
                             className="w-full rounded-lg"
-                            src={gameState.themeUrl}
+                            src={proxyMediaUrl(gameState.themeUrl)}
                         >
                             Your browser does not support the video element.
                         </video>

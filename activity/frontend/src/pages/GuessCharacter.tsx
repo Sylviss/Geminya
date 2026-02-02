@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { guessCharacterApi } from '../api/client'
 import DifficultySelector from '../components/common/DifficultySelector'
 import SearchInput from '../components/common/SearchInput'
+import { proxyMediaUrl } from '../utils/mediaProxy'
 
 interface CharacterCard {
     gameId: string
@@ -237,7 +238,7 @@ export default function GuessCharacter() {
                             {/* Character Image */}
                             <div className="relative mb-4">
                                 <img
-                                    src={char.characterImage}
+                                    src={proxyMediaUrl(char.characterImage)}
                                     alt={char.target?.characterName || 'Character'}
                                     className="w-full aspect-[3/4] object-cover rounded-lg"
                                 />
@@ -308,7 +309,7 @@ export default function GuessCharacter() {
                         {/* Character Image */}
                         <div className="relative mb-4">
                             <img
-                                src={char.characterImage}
+                                src={proxyMediaUrl(char.characterImage)}
                                 alt={`Character ${index + 1}`}
                                 className="w-full aspect-[3/4] object-cover rounded-lg"
                             />

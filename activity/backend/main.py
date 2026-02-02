@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import anidle, guess_anime, guess_character, guess_theme
+from routers import anidle, guess_anime, guess_character, guess_theme, media_proxy
 from services.ids_service import ids_service
 
 # Configure logging
@@ -76,6 +76,7 @@ app.include_router(anidle.router, prefix="/anidle", tags=["anidle"])
 app.include_router(guess_anime.router, prefix="/guess-anime", tags=["guess-anime"])
 app.include_router(guess_character.router, prefix="/guess-character", tags=["guess-character"])
 app.include_router(guess_theme.router, prefix="/guess-theme", tags=["guess-theme"])
+app.include_router(media_proxy.router, prefix="/media", tags=["media"])
 
 
 @app.get("/")
