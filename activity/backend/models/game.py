@@ -41,7 +41,13 @@ class AnidleGame(BaseModel):
         return int(time.time() - self.start_time)
     
     @staticmethod
-    def compare_anime(guess: Dict[str, Any], target: Dict[str, Any]) -> Dict[str, str]:
+    def compare_anime(guess: Dict[str, Any], target: Dict[str, Any]) -> Dict[str, Any]:
+        """Compare guess anime with target anime.
+        
+        Returns comparison dict with status for each field:
+        - Simple fields: "value status" string
+        - Tags: list of {name, status} where status is "correct", "secondary", or "wrong"
+        """
         comparison = {}
         
         guess_title = guess.get("title", "Unknown")
@@ -59,12 +65,15 @@ class AnidleGame(BaseModel):
         
         guess_score = guess.get("score", 0) or 0
         target_score = target.get("score", 0) or 0
-        if guess_score == target_score:
-            comparison["score"] = f"{guess_score}/10 ✅"
-        elif guess_score < target_score:
-            comparison["score"] = f"{guess_score}/10 ⬆️"
+        # Round to 1 decimal for comparison
+        guess_score_rounded = round(float(guess_score), 1)
+        target_score_rounded = round(float(target_score), 1)
+        if guess_score_rounded == target_score_rounded:
+            comparison["score"] = f"{guess_score_rounded} ✅"
+        elif guess_score_rounded < target_score_rounded:
+            comparison["score"] = f"{guess_score_rounded} ⬆️"
         else:
-            comparison["score"] = f"{guess_score}/10 ⬇️"
+            comparison["score"] = f"{guess_score_rounded} ⬇️"
         
         guess_eps = guess.get("episodes", 0) or 0
         target_eps = target.get("episodes", 0) or 0
@@ -75,13 +84,16 @@ class AnidleGame(BaseModel):
         else:
             comparison["episodes"] = f"{guess_eps} ⬇️"
         
-        guess_genres = set(guess.get("genres", []))
+        guess_genres = guess.get("genres", [])
         target_genres = set(target.get("genres", []))
-        if guess_genres == target_genres:
-            comparison["genres"] = f"{', '.join(sorted(guess_genres))} ✅"
-        else:
-            genre_matches = [f"{g} {'✅' if g in target_genres else '❌'}" for g in guess.get("genres", [])]
-            comparison["genres"] = ", ".join(genre_matches) if genre_matches else "❌"
+        # Return individual status for each genre (like tags)
+        genres_result = []
+        for genre in guess_genres:
+            if genre in target_genres:
+                genres_result.append({"name": genre, "status": "correct"})
+            else:
+                genres_result.append({"name": genre, "status": "wrong"})
+        comparison["genres"] = genres_result
         
         guess_studios = set(guess.get("studios", []))
         target_studios = set(target.get("studios", []))
@@ -99,9 +111,31 @@ class AnidleGame(BaseModel):
         target_format = target.get("format", "Unknown")
         comparison["format"] = f"{guess_format} {'✅' if guess_format == target_format else '❌'}"
         
+        # Media type (same as format, but separate field for UI)
+        guess_media_type = guess.get("media_type", guess.get("format", "Unknown"))
+        target_media_type = target.get("media_type", target.get("format", "Unknown"))
+        comparison["media_type"] = f"{guess_media_type} {'✅' if guess_media_type == target_media_type else '❌'}"
+        
         guess_season = guess.get("season", "Unknown")
         target_season = target.get("season", "Unknown")
         comparison["season"] = f"{guess_season} {'✅' if guess_season == target_season else '❌'}"
+        
+        # Tags comparison with 3 states: correct (primary), secondary, wrong
+        # Target has primary_tags (first 5) and secondary_tags (next 5)
+        target_primary = set(target.get("primary_tags", []))
+        target_secondary = set(target.get("secondary_tags", []))
+        guess_primary = guess.get("primary_tags", [])
+        
+        tags_result = []
+        for tag in guess_primary:
+            if tag in target_primary:
+                tags_result.append({"name": tag, "status": "correct"})
+            elif tag in target_secondary:
+                tags_result.append({"name": tag, "status": "secondary"})
+            else:
+                tags_result.append({"name": tag, "status": "wrong"})
+        
+        comparison["tags"] = tags_result
         
         return comparison
 
@@ -236,6 +270,41 @@ class GuessCharacterGame(BaseModel):
         self.is_complete = True
         
         return {"character_correct": char_correct, "anime_correct": anime_correct, "is_won": self.is_won}
+    
+    def get_duration(self) -> int:
+        return int(time.time() - self.start_time)
+
+
+class GuessThemeGame(BaseModel):
+    """Game state for Guess OP/ED (Opening/Ending theme guessing)."""
+    
+    game_id: str
+    user_id: str
+    target_anime: Dict[str, Any]  # Anime info
+    theme: Dict[str, Any]  # Theme info (slug, title, url)
+    theme_type: str  # "op" or "ed"
+    current_stage: int = 1  # 1 = audio only, 2 = video
+    max_stage: int = 2
+    is_complete: bool = False
+    is_won: bool = False
+    difficulty: str = "normal"
+    start_time: float = Field(default_factory=time.time)
+    
+    def reveal_next_stage(self) -> bool:
+        """Reveal the next stage. Returns True if there are more stages."""
+        if self.current_stage < self.max_stage:
+            self.current_stage += 1
+            return True
+        return False
+    
+    def make_guess(self, anime_name: str, target_titles: List[str]) -> bool:
+        """Make a guess. Returns True if correct."""
+        self.is_complete = True
+        self.is_won = any(
+            anime_name.lower().strip() == title.lower().strip() 
+            for title in target_titles
+        )
+        return self.is_won
     
     def get_duration(self) -> int:
         return int(time.time() - self.start_time)

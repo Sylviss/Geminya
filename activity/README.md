@@ -1,6 +1,6 @@
 # Geminya Discord Activity
 
-A Discord Embedded Activity containing anime mini-games: Anidle, Guess Anime, and Guess Character.
+A Discord Embedded Activity containing anime mini-games: Anidle, Guess Anime, Guess Character, Guess Opening, and Guess Ending.
 
 ## Project Structure
 
@@ -12,10 +12,12 @@ activity/
 │   ├── routers/             # API route handlers
 │   │   ├── anidle.py        # Anidle game API
 │   │   ├── guess_anime.py   # Guess Anime API
-│   │   └── guess_character.py # Guess Character API
+│   │   ├── guess_character.py # Guess Character API
+│   │   └── guess_theme.py   # Guess OP/ED theme API
 │   ├── services/            # External API services
 │   │   ├── jikan_service.py # Jikan (MAL) API wrapper
 │   │   ├── shikimori_service.py # Shikimori API wrapper
+│   │   ├── animethemes_service.py # AnimeThemes.moe API wrapper
 │   │   ├── ids_service.py   # IDs.moe API wrapper
 │   │   └── config_service.py # Config management
 │   └── models/              # Data models
@@ -35,7 +37,9 @@ activity/
         │   ├── Home.tsx     # Game selection
         │   ├── Anidle.tsx   # Wordle-style anime guessing
         │   ├── GuessAnime.tsx # Screenshot guessing
-        │   └── GuessCharacter.tsx # Character identification
+        │   ├── GuessCharacter.tsx # Character identification
+        │   ├── GuessOpening.tsx # Opening theme guessing
+        │   └── GuessEnding.tsx # Ending theme guessing
         └── components/      # Shared components
             └── common/
                 ├── DifficultySelector.tsx
@@ -125,6 +129,26 @@ npx @anthropic/discord-activity-tunnel
 | `/api/guess-character/search-character` | GET | Character autocomplete |
 | `/api/guess-character/search-anime` | GET | Anime autocomplete |
 
+### Guess Opening
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/guess-theme/op/start` | POST | Start new opening game |
+| `/api/guess-theme/{game_id}/guess` | POST | Submit anime guess |
+| `/api/guess-theme/{game_id}/reveal` | POST | Reveal next stage (audio → video) |
+| `/api/guess-theme/{game_id}/giveup` | POST | Give up |
+| `/api/guess-theme/search/anime` | GET | Anime autocomplete |
+
+### Guess Ending
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/guess-theme/ed/start` | POST | Start new ending game |
+| `/api/guess-theme/{game_id}/guess` | POST | Submit anime guess |
+| `/api/guess-theme/{game_id}/reveal` | POST | Reveal next stage (audio → video) |
+| `/api/guess-theme/{game_id}/giveup` | POST | Give up |
+| `/api/guess-theme/search/anime` | GET | Anime autocomplete |
+
 ## Games
 
 ### 🎯 Anidle
@@ -139,6 +163,12 @@ Identify an anime from screenshots. You get 4 screenshots and 4 attempts. Each w
 
 ### 🎭 Guess Character
 One-shot challenge! Identify the character AND name their anime correctly. Both must be right to win.
+
+### 🎵 Guess Opening
+Listen to an anime opening theme and guess which anime it's from! Start with audio only, then reveal the video as a hint.
+
+### 🎶 Guess Ending
+Listen to an anime ending theme and guess which anime it's from! Start with audio only, then reveal the video as a hint.
 
 ## Tech Stack
 
@@ -158,6 +188,7 @@ One-shot challenge! Identify the character AND name their anime correctly. Both 
 **External APIs:**
 - Jikan API v4 (MyAnimeList data with popularity ranking)
 - Shikimori GraphQL API (anime screenshots)
+- AnimeThemes.moe API (opening/ending themes with videos)
 - IDs.moe API (anime ID conversions between MAL, Shikimori, AniList, AniDB, etc.)
 
 ## Coexistence with Bot
@@ -170,10 +201,17 @@ This Activity coexists with the existing discord.py bot. Both can be run simulta
 
 ## Production Deployment
 
-For production, you'll need to:
+For production deployment where other users can play:
 
-1. Deploy backend to a server (Heroku, Railway, VPS, etc.)
-2. Build and deploy frontend: `npm run build`
-3. Use Redis for game state storage instead of in-memory
-4. Configure proper CORS origins
-5. Set up Discord Activity URL mappings to production URLs
+**Quick Start:** See [QUICK_DEPLOY.md](QUICK_DEPLOY.md)  
+**Full Guide:** See [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)  
+**Checklist:** See [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)
+
+**Summary:**
+1. Run backend locally (or deploy to Railway/Heroku)
+2. Expose backend via Cloudflare Tunnel
+3. Deploy frontend to Vercel/Netlify
+4. Configure Discord URL mappings
+5. Test and launch!
+
+The frontend uses `@discord/embedded-app-sdk` for Discord integration (already configured).

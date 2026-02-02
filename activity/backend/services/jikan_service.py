@@ -53,8 +53,12 @@ class JikanService:
         except (aiohttp.ClientError, asyncio.TimeoutError):
             return None
     
-    async def get_random_anime(self, difficulty: str = "normal") -> Optional[Dict[str, Any]]:
+    async def get_random_anime(self, difficulty: str = "normal", source: str = "anime_selection") -> Optional[Dict[str, Any]]:
         """Get a random anime based on difficulty using MAL popularity ranking.
+        
+        Args:
+            difficulty: Difficulty level
+            source: Config source ("anime_selection" or "theme_anime_selection")
         
         Uses weighted random selection based on config.yml rank_ranges.
         The Jikan API provides 25 items per page ordered by popularity.
@@ -68,7 +72,7 @@ class JikanService:
         try:
             from .config_service import game_config
             
-            min_rank, max_rank = game_config.select_rank_range(difficulty)
+            min_rank, max_rank = game_config.select_rank_range(difficulty, source)
             
             # Calculate pages for the rank range
             # With limit=25, each page covers ~25 ranks: page 100 ≈ rank 2500
@@ -202,13 +206,21 @@ class JikanService:
         return None
     
     async def get_random_character(self, difficulty: str = "normal") -> Optional[Dict[str, Any]]:
-        """Get a random character based on difficulty with retry logic."""
+        """Get a random character based on difficulty with weighted selection.
+        
+        Uses config to select anime difficulty + character role (main/support).
+        """
+        from .config_service import game_config
+        
         max_attempts = 5
         
         for attempt in range(max_attempts):
             try:
-                # First get a random popular anime
-                anime = await self.get_random_anime(difficulty)
+                # Get weighted anime difficulty and role from config
+                anime_difficulty, target_role = game_config.select_character_params(difficulty)
+                
+                # Get anime using the selected difficulty
+                anime = await self.get_random_anime(anime_difficulty)
                 if not anime:
                     continue
                 
@@ -225,19 +237,20 @@ class JikanService:
                 if not characters:
                     continue
                 
-                # Try to get Main characters first
-                main_chars = [c for c in characters if c.get("role") == "Main"]
+                # Filter by target role
+                role_chars = [c for c in characters if c.get("role") == target_role]
                 
-                # Fall back to Supporting if no Main characters
-                if not main_chars:
-                    main_chars = [c for c in characters if c.get("role") == "Supporting"]
+                # Fall back to other role if none found
+                if not role_chars:
+                    other_role = "Supporting" if target_role == "Main" else "Main"
+                    role_chars = [c for c in characters if c.get("role") == other_role]
                 
                 # Fall back to any character if still none
-                if not main_chars:
-                    main_chars = characters
+                if not role_chars:
+                    role_chars = characters
                 
-                if main_chars:
-                    char_entry = random.choice(main_chars)
+                if role_chars:
+                    char_entry = random.choice(role_chars)
                     char_data = char_entry.get("character", {})
                     
                     # Ensure character has an image
@@ -247,6 +260,7 @@ class JikanService:
                         continue  # Skip characters without images
                     
                     char_data["anime"] = anime  # Attach anime info
+                    print(f"✅ Character: {char_data.get('name')} ({char_entry.get('role')}) from {anime.get('title')} [anime_diff: {anime_difficulty}]")
                     return char_data
                     
             except Exception as e:

@@ -89,22 +89,30 @@ class GameConfig:
     
     # === Anime Selection ===
     
-    def get_rank_ranges(self, difficulty: str) -> Dict[str, int]:
+    def get_rank_ranges(self, difficulty: str, source: str = "anime_selection") -> Dict[str, int]:
         """Get popularity rank ranges for a difficulty level.
+        
+        Args:
+            difficulty: Difficulty level (easy, normal, hard, etc.)
+            source: Config source ("anime_selection" or "theme_anime_selection")
         
         Returns:
             Dict mapping "min-max" strings to weights
         """
-        ranges = self._config.get("anime_selection", {}).get("rank_ranges", {})
+        ranges = self._config.get(source, {}).get("rank_ranges", {})
         return ranges.get(difficulty, ranges.get("normal", {}))
     
-    def select_rank_range(self, difficulty: str) -> Tuple[int, int]:
+    def select_rank_range(self, difficulty: str, source: str = "anime_selection") -> Tuple[int, int]:
         """Select a random popularity rank range based on difficulty weights.
+        
+        Args:
+            difficulty: Difficulty level (easy, normal, hard, etc.)
+            source: Config source ("anime_selection" or "theme_anime_selection")
         
         Returns:
             Tuple of (min_rank, max_rank) where 1 = most popular
         """
-        ranges = self.get_rank_ranges(difficulty)
+        ranges = self.get_rank_ranges(difficulty, source)
         
         if not ranges:
             # Fallback to normal range
@@ -118,6 +126,34 @@ class GameConfig:
         
         # Randomly select based on weights
         selected = random.choice(weighted_ranges)
+        return selected
+    
+    def select_character_params(self, difficulty: str) -> Tuple[str, str]:
+        """Select anime difficulty and character role based on weighted config.
+        
+        Returns:
+            Tuple of (anime_difficulty, role) e.g. ("easy", "Main")
+        """
+        char_config = self._config.get("character_selection", {})
+        weights = char_config.get(difficulty, char_config.get("normal", {}))
+        
+        if not weights:
+            # Fallback: same difficulty, main character
+            return (difficulty, "Main")
+        
+        # Create weighted list of (anime_difficulty, role) tuples
+        weighted_choices: List[Tuple[str, str]] = []
+        for combo, weight in weights.items():
+            parts = combo.split(":")
+            if len(parts) == 2:
+                anime_diff = parts[0]
+                role = "Main" if parts[1].lower() == "main" else "Supporting"
+                weighted_choices.extend([(anime_diff, role)] * weight)
+        
+        if not weighted_choices:
+            return (difficulty, "Main")
+        
+        selected = random.choice(weighted_choices)
         return selected
     
     # === Game Settings ===

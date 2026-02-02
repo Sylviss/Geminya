@@ -4,22 +4,42 @@ import { anidleApi } from '../api/client'
 import DifficultySelector from '../components/common/DifficultySelector'
 import SearchInput from '../components/common/SearchInput'
 
+interface TagComparison {
+    name: string
+    status: 'correct' | 'secondary' | 'wrong'
+}
+
+interface GenreComparison {
+    name: string
+    status: 'correct' | 'wrong'
+}
+
 interface Comparison {
     title: string
     year: string
     score: string
     episodes: string
-    genres: string
+    genres: GenreComparison[]
     studio: string
     source: string
     format: string
+    media_type: string
     season: string
-    themes?: string
+    tags: TagComparison[]
+}
+
+interface GuessAnime {
+    title: string
+    year: number
+    score: number
+    image?: string
+    media_type?: string
+    primary_tags?: string[]
 }
 
 interface GameState {
     gameId: string
-    guesses: { anime: any; comparison: Comparison }[]
+    guesses: { anime: GuessAnime; comparison: Comparison }[]
     guessesRemaining: number
     isComplete: boolean
     isWon: boolean
@@ -33,8 +53,10 @@ interface GameState {
         studios: string[]
         source: string
         format: string
+        media_type: string
         season: string
-        themes: string[]
+        primary_tags: string[]
+        secondary_tags: string[]
         image: string
     }
     duration?: number
@@ -56,7 +78,6 @@ export default function Anidle() {
     const [searchValue, setSearchValue] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [showHowToPlay, setShowHowToPlay] = useState(false)
-    const [expandedGuess, setExpandedGuess] = useState<number | null>(null)
 
     const startGame = async () => {
         setIsLoading(true)
@@ -140,19 +161,39 @@ export default function Anidle() {
         }
     }, [])
 
-    const getIndicatorClass = (value: string) => {
-        if (value.includes('✅')) return 'indicator-correct'
-        if (value.includes('⬆️') || value.includes('⬇️')) return 'indicator-partial'
-        return 'indicator-wrong'
+    // Get status class for simple comparisons
+    const getValueStatus = (value: string): 'correct' | 'partial' | 'wrong' => {
+        if (value.includes('✅')) return 'correct'
+        if (value.includes('⬆️') || value.includes('⬇️')) return 'partial'
+        return 'wrong'
     }
 
+    // Get arrow direction if any
+    const getArrowDirection = (value: string): 'up' | 'down' | null => {
+        if (value.includes('⬆️')) return 'up'
+        if (value.includes('⬇️')) return 'down'
+        return null
+    }
+
+    // Extract clean text without emojis
     const extractText = (value: string) => value.replace(/[✅❌⬆️⬇️]/g, '').trim()
 
-    const getIndicatorEmoji = (value: string) => {
-        if (value.includes('✅')) return '✅'
-        if (value.includes('⬆️')) return '⬆️'
-        if (value.includes('⬇️')) return '⬇️'
-        return '❌'
+    // Get tag/genre color class - text color only
+    const getTagColorClass = (status: string) => {
+        switch (status) {
+            case 'correct': return 'text-green-400'
+            case 'secondary': return 'text-orange-400'
+            default: return 'text-red-400'
+        }
+    }
+
+    // Get cell text color based on status
+    const getCellTextClass = (status: 'correct' | 'partial' | 'wrong') => {
+        switch (status) {
+            case 'correct': return 'text-green-400'
+            case 'partial': return 'text-yellow-400'
+            default: return 'text-red-400'
+        }
     }
 
     // Start screen
@@ -179,16 +220,24 @@ export default function Anidle() {
                             <p>Guess the anime by comparing properties:</p>
                             <div className="grid grid-cols-2 gap-2 text-xs mt-3">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-green-400">✅</span> Exact match
+                                    <span className="w-3 h-3 rounded bg-green-500/50"></span> Match
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-red-400">❌</span> No match
+                                    <span className="w-3 h-3 rounded bg-red-500/50"></span> No match
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-yellow-400">⬆️</span> Target is higher
+                                    <span className="text-yellow-400">▲</span> Target is higher
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-yellow-400">⬇️</span> Target is lower
+                                    <span className="text-yellow-400">▼</span> Target is lower
+                                </div>
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-white/10">
+                                <p className="mb-2">Tag colors:</p>
+                                <div className="flex gap-2 flex-wrap text-xs">
+                                    <span className="px-2 py-1 rounded bg-green-500/30 text-green-300">Primary</span>
+                                    <span className="px-2 py-1 rounded bg-orange-500/30 text-orange-300">Secondary</span>
+                                    <span className="px-2 py-1 rounded bg-red-500/30 text-red-300">Wrong</span>
                                 </div>
                             </div>
                         </div>
@@ -212,90 +261,82 @@ export default function Anidle() {
         )
     }
 
-    // Game complete screen
-    if (gameState.isComplete) {
-        const diff = difficultyInfo[gameState.difficulty] || difficultyInfo.normal
+    // Result panel component (shown when game is complete)
+    const ResultPanel = () => {
+        if (!gameState.isComplete || !gameState.target) return null
         const target = gameState.target
+        const diff = difficultyInfo[gameState.difficulty] || difficultyInfo.normal
 
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6">
-                <div className="card p-6 sm:p-8 max-w-2xl w-full text-center animate-fade-in">
-                    <div className="text-6xl sm:text-7xl mb-4">{gameState.isWon ? '🎉' : '💀'}</div>
-                    <h1 className="text-3xl sm:text-4xl font-bold mb-2">
-                        {gameState.isWon ? 'Congratulations!' : 'Game Over!'}
-                    </h1>
-                    <p className="text-gray-400 mb-4">
-                        {gameState.isWon
-                            ? `You guessed it in ${gameState.guesses.length} tries!`
-                            : 'Better luck next time!'}
-                    </p>
-
-                    <div className="inline-block px-4 py-2 bg-white/10 rounded-full text-sm mb-6">
-                        {diff.emoji} {diff.label}
+            <div className="card p-6 mb-6 animate-fade-in">
+                <div className="flex items-center gap-4 mb-4">
+                    <div className="text-5xl">{gameState.isWon ? '🎉' : '💀'}</div>
+                    <div>
+                        <h2 className="text-2xl font-bold">
+                            {gameState.isWon ? 'Congratulations!' : 'Game Over!'}
+                        </h2>
+                        <p className="text-gray-400">
+                            {gameState.isWon
+                                ? `You guessed it in ${gameState.guesses.length} tries!`
+                                : 'Better luck next time!'}
+                        </p>
                     </div>
+                    <div className="ml-auto flex gap-2">
+                        <span className="px-3 py-1 bg-white/10 rounded-full text-sm">
+                            {diff.emoji} {diff.label}
+                        </span>
+                        <span className="px-3 py-1 bg-white/10 rounded-full text-sm">
+                            {gameState.duration || 0}s
+                        </span>
+                    </div>
+                </div>
 
-                    {target && (
-                        <div className="text-left bg-white/5 rounded-lg p-4 sm:p-6 mb-6">
-                            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-                                {target.image && (
-                                    <img
-                                        src={target.image}
-                                        alt={target.title}
-                                        className="w-32 sm:w-40 h-auto rounded-lg shadow-xl mx-auto sm:mx-0 flex-shrink-0"
-                                    />
-                                )}
-                                <div className="flex-grow">
-                                    <h2 className="text-xl sm:text-2xl font-bold text-anime-primary mb-3 text-center sm:text-left">
-                                        {target.title}
-                                    </h2>
-                                    <div className="grid grid-cols-2 gap-2 text-sm">
-                                        <div><span className="text-gray-400">Year:</span> {target.year || 'N/A'}</div>
-                                        <div><span className="text-gray-400">Score:</span> {target.score}/10</div>
-                                        <div><span className="text-gray-400">Episodes:</span> {target.episodes || 'N/A'}</div>
-                                        <div><span className="text-gray-400">Format:</span> {target.format || 'N/A'}</div>
-                                        <div><span className="text-gray-400">Source:</span> {target.source || 'N/A'}</div>
-                                        <div><span className="text-gray-400">Season:</span> {target.season || 'N/A'}</div>
-                                    </div>
-                                    <div className="mt-3 text-sm">
-                                        <span className="text-gray-400">Genres:</span>
-                                        <div className="flex flex-wrap gap-1 mt-1">
-                                            {target.genres?.map((g, i) => (
-                                                <span key={i} className="px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded text-xs">{g}</span>
-                                            )) || 'N/A'}
-                                        </div>
-                                    </div>
-                                    <div className="mt-2 text-sm">
-                                        <span className="text-gray-400">Studios:</span>
-                                        <div className="flex flex-wrap gap-1 mt-1">
-                                            {target.studios?.map((s, i) => (
-                                                <span key={i} className="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 rounded text-xs">{s}</span>
-                                            )) || 'N/A'}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                <div className="flex gap-6 bg-white/5 rounded-lg p-4">
+                    {target.image && (
+                        <img
+                            src={target.image}
+                            alt={target.title}
+                            className="w-32 h-auto rounded-lg shadow-xl flex-shrink-0"
+                        />
                     )}
-
-                    <div className="flex justify-center gap-6 mb-6 p-4 bg-white/5 rounded-lg">
-                        <div className="text-center">
-                            <div className="text-2xl font-bold">{gameState.guesses.length}</div>
-                            <div className="text-xs text-gray-400">Guesses</div>
+                    <div className="flex-grow">
+                        <h3 className="text-xl font-bold text-anime-primary mb-2">{target.title}</h3>
+                        <div className="grid grid-cols-3 gap-2 text-sm mb-3">
+                            <div><span className="text-gray-400">Year:</span> {target.year || 'N/A'}</div>
+                            <div><span className="text-gray-400">Score:</span> {target.score}</div>
+                            <div><span className="text-gray-400">Type:</span> {target.media_type || target.format}</div>
+                            <div><span className="text-gray-400">Episodes:</span> {target.episodes || 'N/A'}</div>
+                            <div><span className="text-gray-400">Source:</span> {target.source}</div>
+                            <div><span className="text-gray-400">Season:</span> {target.season}</div>
                         </div>
-                        <div className="text-center">
-                            <div className="text-2xl font-bold">{gameState.duration || 0}s</div>
-                            <div className="text-xs text-gray-400">Time</div>
+                        <div className="text-sm mb-2">
+                            <span className="text-gray-400">Genres: </span>
+                            <span className="text-purple-300">
+                                {target.genres?.join(', ') || 'N/A'}
+                            </span>
+                        </div>
+                        <div className="text-sm mb-2">
+                            <span className="text-gray-400">Primary Tags: </span>
+                            <span className="text-green-400">
+                                {target.primary_tags?.join(', ') || 'N/A'}
+                            </span>
+                        </div>
+                        <div className="text-sm">
+                            <span className="text-gray-400">Secondary Tags: </span>
+                            <span className="text-orange-400">
+                                {target.secondary_tags?.join(', ') || 'N/A'}
+                            </span>
                         </div>
                     </div>
+                </div>
 
-                    <div className="flex gap-4 justify-center">
-                        <button onClick={() => setGameState(null)} className="btn btn-primary">
-                            🔄 Play Again
-                        </button>
-                        <Link to="/" className="btn btn-secondary">
-                            🏠 Home
-                        </Link>
-                    </div>
+                <div className="flex gap-4 justify-center mt-4">
+                    <button onClick={() => setGameState(null)} className="btn btn-primary">
+                        🔄 Play Again
+                    </button>
+                    <Link to="/" className="btn btn-secondary">
+                        🏠 Home
+                    </Link>
                 </div>
             </div>
         )
@@ -322,140 +363,166 @@ export default function Anidle() {
                 </div>
             </div>
 
-            {/* Legend Toggle */}
-            <div className="max-w-4xl mx-auto mb-3">
-                <button
-                    onClick={() => setShowHowToPlay(!showHowToPlay)}
-                    className="text-xs text-gray-400 hover:text-white transition-colors"
-                >
-                    {showHowToPlay ? '▼ Hide Legend' : '▶ Show Legend'}
-                </button>
-                {showHowToPlay && (
-                    <div className="mt-2 p-3 bg-white/5 rounded-lg text-xs grid grid-cols-4 gap-2">
-                        <span><span className="text-green-400">✅</span> Match</span>
-                        <span><span className="text-red-400">❌</span> Wrong</span>
-                        <span><span className="text-yellow-400">⬆️</span> Higher</span>
-                        <span><span className="text-yellow-400">⬇️</span> Lower</span>
-                    </div>
-                )}
-            </div>
+            {/* Main content area */}
+            <div className="max-w-6xl mx-auto">
+                {/* Result panel (when game is complete - above guesses) */}
+                <ResultPanel />
 
-            {/* Guess History - Card Layout */}
-            <div className="max-w-4xl mx-auto space-y-2 mb-6">
-                {gameState.guesses.length === 0 && (
-                    <div className="text-center text-gray-500 py-8">
-                        <p className="text-lg">No guesses yet</p>
-                        <p className="text-sm">Start typing an anime name below!</p>
-                    </div>
-                )}
-                {gameState.guesses.map((guess, index) => (
-                    <div
-                        key={index}
-                        className="card p-3 animate-slide-up cursor-pointer hover:bg-white/10 transition-colors"
-                        onClick={() => setExpandedGuess(expandedGuess === index ? null : index)}
+                {/* Legend Toggle */}
+                <div className="mb-3">
+                    <button
+                        onClick={() => setShowHowToPlay(!showHowToPlay)}
+                        className="text-xs text-gray-400 hover:text-white transition-colors"
                     >
-                        {/* Compact view */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-sm flex-shrink-0">
-                                #{index + 1}
-                            </span>
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${getIndicatorClass(guess.comparison.title)}`}>
-                                {extractText(guess.comparison.title)}
-                            </span>
-                            <div className="flex gap-1 flex-wrap">
-                                <span className={`px-2 py-0.5 rounded text-xs ${getIndicatorClass(guess.comparison.year)}`}>
-                                    {getIndicatorEmoji(guess.comparison.year)} {extractText(guess.comparison.year)}
-                                </span>
-                                <span className={`px-2 py-0.5 rounded text-xs ${getIndicatorClass(guess.comparison.score)}`}>
-                                    {getIndicatorEmoji(guess.comparison.score)} {extractText(guess.comparison.score)}
-                                </span>
-                                <span className={`px-2 py-0.5 rounded text-xs ${getIndicatorClass(guess.comparison.episodes)}`}>
-                                    {getIndicatorEmoji(guess.comparison.episodes)} {extractText(guess.comparison.episodes)} eps
-                                </span>
+                        {showHowToPlay ? '▼ Hide Legend' : '▶ Show Legend'}
+                    </button>
+                    {showHowToPlay && (
+                        <div className="mt-2 p-3 bg-white/5 rounded-lg text-xs flex gap-6 flex-wrap">
+                            <div className="flex gap-3">
+                                <span><span className="inline-block w-3 h-3 rounded bg-green-500/50 mr-1"></span> Match</span>
+                                <span><span className="inline-block w-3 h-3 rounded bg-red-500/50 mr-1"></span> Wrong</span>
+                                <span><span className="text-yellow-400 mr-1">▲</span> Higher</span>
+                                <span><span className="text-yellow-400 mr-1">▼</span> Lower</span>
                             </div>
-                            <span className="text-gray-500 text-xs ml-auto">
-                                {expandedGuess === index ? '▲' : '▼'}
-                            </span>
+                            <div className="flex gap-2">
+                                <span className="px-2 py-0.5 rounded bg-green-500/30 text-green-300">Primary Tag</span>
+                                <span className="px-2 py-0.5 rounded bg-orange-500/30 text-orange-300">Secondary Tag</span>
+                                <span className="px-2 py-0.5 rounded bg-red-500/30 text-red-300">Wrong Tag</span>
+                            </div>
                         </div>
+                    )}
+                </div>
 
-                        {/* Expanded view */}
-                        {expandedGuess === index && (
-                            <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                                <div>
-                                    <span className="text-gray-400 block mb-1">Format</span>
-                                    <span className={`inline-block px-2 py-1 rounded ${getIndicatorClass(guess.comparison.format)}`}>
-                                        {getIndicatorEmoji(guess.comparison.format)} {extractText(guess.comparison.format)}
-                                    </span>
-                                </div>
-                                <div>
-                                    <span className="text-gray-400 block mb-1">Source</span>
-                                    <span className={`inline-block px-2 py-1 rounded ${getIndicatorClass(guess.comparison.source)}`}>
-                                        {getIndicatorEmoji(guess.comparison.source)} {extractText(guess.comparison.source)}
-                                    </span>
-                                </div>
-                                <div>
-                                    <span className="text-gray-400 block mb-1">Season</span>
-                                    <span className={`inline-block px-2 py-1 rounded ${getIndicatorClass(guess.comparison.season)}`}>
-                                        {getIndicatorEmoji(guess.comparison.season)} {extractText(guess.comparison.season)}
-                                    </span>
-                                </div>
-                                <div className="col-span-2 sm:col-span-3">
-                                    <span className="text-gray-400 block mb-1">Genres</span>
-                                    <div className="flex flex-wrap gap-1">
-                                        {extractText(guess.comparison.genres).split(',').map((genre, i) => {
-                                            const trimmed = genre.trim()
-                                            return (
-                                                <span key={i} className={`px-2 py-0.5 rounded ${trimmed.includes('✅') ? 'indicator-correct' : 'indicator-wrong'}`}>
-                                                    {trimmed.replace('✅', '').replace('❌', '').trim()}
-                                                </span>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-                                <div className="col-span-2 sm:col-span-3">
-                                    <span className="text-gray-400 block mb-1">Studio</span>
-                                    <span className={`inline-block px-2 py-1 rounded ${getIndicatorClass(guess.comparison.studio)}`}>
-                                        {extractText(guess.comparison.studio)}
-                                    </span>
-                                </div>
+                {/* Guess History - Table Layout */}
+                <div className="overflow-x-auto mb-6">
+                    {gameState.guesses.length === 0 ? (
+                        <div className="text-center text-gray-500 py-8">
+                            <p className="text-lg">No guesses yet</p>
+                            <p className="text-sm">Start typing an anime name below!</p>
+                        </div>
+                    ) : (
+                        <table className="w-full text-sm border-collapse">
+                            <thead>
+                                <tr className="text-gray-400 border-b border-white/10">
+                                    <th className="text-left py-2 px-2 font-medium">Title</th>
+                                    <th className="text-center py-2 px-2 font-medium">Year</th>
+                                    <th className="text-center py-2 px-2 font-medium">Format</th>
+                                    <th className="text-center py-2 px-2 font-medium">Studio</th>
+                                    <th className="text-center py-2 px-2 font-medium">Source</th>
+                                    <th className="text-center py-2 px-2 font-medium">Score</th>
+                                    <th className="text-center py-2 px-2 font-medium">Genres</th>
+                                    <th className="text-left py-2 px-2 font-medium">Tags</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[...gameState.guesses].reverse().map((guess, index) => {
+                                    const c = guess.comparison
+                                    return (
+                                        <tr key={index} className="border-b border-white/5 hover:bg-white/5">
+                                            {/* Title */}
+                                            <td className="py-2 px-2">
+                                                <span className={`font-medium ${getCellTextClass(getValueStatus(c.title))}`}>{extractText(c.title)}</span>
+                                            </td>
+
+                                            {/* Year */}
+                                            <td className="py-2 px-2 text-center">
+                                                <div className={`flex items-center justify-center gap-1 ${getCellTextClass(getValueStatus(c.year))}`}>
+                                                    {getArrowDirection(c.year) === 'up' && <span className="text-yellow-400 text-lg">▲</span>}
+                                                    {getArrowDirection(c.year) === 'down' && <span className="text-yellow-400 text-lg">▼</span>}
+                                                    <span>{extractText(c.year)}</span>
+                                                </div>
+                                            </td>
+
+                                            {/* Format/Type */}
+                                            <td className="py-2 px-2 text-center">
+                                                <span className={getCellTextClass(getValueStatus(c.media_type))}>{extractText(c.media_type)}</span>
+                                            </td>
+
+                                            {/* Studio */}
+                                            <td className="py-2 px-2 text-center">
+                                                <span className={getCellTextClass(getValueStatus(c.studio))}>{extractText(c.studio) || '-'}</span>
+                                            </td>
+
+                                            {/* Source */}
+                                            <td className="py-2 px-2 text-center">
+                                                <span className={getCellTextClass(getValueStatus(c.source))}>{extractText(c.source)}</span>
+                                            </td>
+
+                                            {/* Score */}
+                                            <td className="py-2 px-2 text-center">
+                                                <div className={`flex items-center justify-center gap-1 ${getCellTextClass(getValueStatus(c.score))}`}>
+                                                    {getArrowDirection(c.score) === 'up' && <span className="text-yellow-400 text-lg">▲</span>}
+                                                    {getArrowDirection(c.score) === 'down' && <span className="text-yellow-400 text-lg">▼</span>}
+                                                    <span>{extractText(c.score)}</span>
+                                                </div>
+                                            </td>
+
+                                            {/* Genres */}
+                                            <td className="py-2 px-2 align-middle">
+                                                <div className="flex flex-col items-center text-xs">
+                                                    {(c.genres || []).map((genre, i) => (
+                                                        <span key={i} className={getTagColorClass(genre.status)}>{genre.name}</span>
+                                                    ))}
+                                                    {(!c.genres || c.genres.length === 0) && (
+                                                        <span className="text-gray-500">-</span>
+                                                    )}
+                                                </div>
+                                            </td>
+
+                                            {/* Tags */}
+                                            <td className="py-2 px-2 align-middle">
+                                                <div className="flex flex-col text-xs">
+                                                    {(c.tags || []).map((tag, i) => (
+                                                        <span key={i} className={getTagColorClass(tag.status)}>{tag.name}</span>
+                                                    ))}
+                                                    {(!c.tags || c.tags.length === 0) && (
+                                                        <span className="text-gray-500">-</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+
+                {/* Input Area */}
+                {!gameState.isComplete && (
+                    <div className="max-w-2xl mx-auto mb-8">
+                        {error && (
+                            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-sm text-center">
+                                {error}
                             </div>
                         )}
-                    </div>
-                ))}
-            </div>
 
-            {/* Input Area - Part of page content */}
-            <div className="max-w-2xl mx-auto mb-8">
-                {error && (
-                    <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-sm text-center">
-                        {error}
+                        <div className="card p-4">
+                            <div className="flex gap-3">
+                                <div className="flex-grow">
+                                    <SearchInput
+                                        value={searchValue}
+                                        onChange={setSearchValue}
+                                        onSearch={searchAnime}
+                                        placeholder="Type anime name..."
+                                        onSelect={(value) => setSearchValue(value)}
+                                        dropUp={false}
+                                    />
+                                </div>
+                                <button
+                                    onClick={makeGuess}
+                                    disabled={isLoading || !searchValue.trim()}
+                                    className={`btn btn-primary px-6 ${isLoading || !searchValue.trim() ? 'btn-disabled' : ''}`}
+                                >
+                                    {isLoading ? '...' : 'Guess'}
+                                </button>
+                                <button onClick={giveUp} disabled={isLoading} className="btn btn-danger px-4">
+                                    Give Up
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
-
-                <div className="card p-4">
-                    <div className="flex gap-3">
-                        <div className="flex-grow">
-                            <SearchInput
-                                value={searchValue}
-                                onChange={setSearchValue}
-                                onSearch={searchAnime}
-                                placeholder="Type anime name..."
-                                onSelect={(value) => setSearchValue(value)}
-                                dropUp={false}
-                            />
-                        </div>
-                        <button
-                            onClick={makeGuess}
-                            disabled={isLoading || !searchValue.trim()}
-                            className={`btn btn-primary px-6 ${isLoading || !searchValue.trim() ? 'btn-disabled' : ''}`}
-                        >
-                            {isLoading ? '...' : 'Guess'}
-                        </button>
-                        <button onClick={giveUp} disabled={isLoading} className="btn btn-danger px-4">
-                            Give Up
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
     )

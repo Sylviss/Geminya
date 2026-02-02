@@ -25,7 +25,7 @@ export default function SearchInput({
     const [highlightIndex, setHighlightIndex] = useState(-1)
     const inputRef = useRef<HTMLInputElement>(null)
     const dropdownRef = useRef<HTMLDivElement>(null)
-    const debounceRef = useRef<NodeJS.Timeout | null>(null)
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const searchSuggestions = useCallback(async (query: string) => {
         if (!query || query.length < 2) {
@@ -156,8 +156,8 @@ export default function SearchInput({
                             onClick={() => handleSelect(suggestion)}
                             onMouseEnter={() => setHighlightIndex(index)}
                             className={`w-full px-4 py-2.5 text-left text-sm transition-colors border-b border-white/5 last:border-b-0 ${index === highlightIndex
-                                    ? 'bg-anime-primary text-white'
-                                    : 'text-gray-300 hover:bg-white/10'
+                                ? 'bg-anime-primary text-white'
+                                : 'text-gray-300 hover:bg-white/10'
                                 }`}
                         >
                             <span className="line-clamp-1">{suggestion.label}</span>

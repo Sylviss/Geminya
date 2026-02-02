@@ -19,6 +19,18 @@ const games = [
         emoji: '🎭',
         path: '/guess-character',
     },
+    {
+        id: 'guess-opening',
+        name: 'Guess OP',
+        emoji: '🎵',
+        path: '/guess-opening',
+    },
+    {
+        id: 'guess-ending',
+        name: 'Guess ED',
+        emoji: '🎶',
+        path: '/guess-ending',
+    },
 ]
 
 export default function Sidebar() {
@@ -29,11 +41,10 @@ export default function Sidebar() {
             {/* Logo/Home */}
             <Link
                 to="/"
-                className={`w-full h-12 rounded-xl flex items-center gap-3 px-3 mb-8 transition-all ${
-                    location.pathname === '/'
+                className={`w-full h-12 rounded-xl flex items-center gap-3 px-3 mb-8 transition-all ${location.pathname === '/'
                         ? 'bg-gradient-to-br from-anime-primary to-anime-secondary shadow-lg'
                         : 'hover:bg-white/10'
-                }`}
+                    }`}
             >
                 <span className="text-2xl">🎮</span>
                 <span className="font-semibold">Home</span>
@@ -45,11 +56,10 @@ export default function Sidebar() {
                     <Link
                         key={game.id}
                         to={game.path}
-                        className={`w-full h-12 rounded-xl flex items-center gap-3 px-3 transition-all ${
-                            location.pathname === game.path
+                        className={`w-full h-12 rounded-xl flex items-center gap-3 px-3 transition-all ${location.pathname === game.path
                                 ? 'bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg'
                                 : 'hover:bg-white/10'
-                        }`}
+                            }`}
                     >
                         <span className="text-2xl">{game.emoji}</span>
                         <span className="font-medium text-sm">{game.name}</span>

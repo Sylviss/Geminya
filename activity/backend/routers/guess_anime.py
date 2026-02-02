@@ -279,7 +279,7 @@ async def give_up(game_id: str):
         "duration": game.get_duration(),
         "all_screenshots": [
             ss.get("medium") or ss.get("original") 
-            for ss in game.screenshots
+            for ss in game.screenshots[:4]
         ]
     }
 

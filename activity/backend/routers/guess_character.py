@@ -33,42 +33,57 @@ def _extract_character_image(char_data: Dict) -> str:
 
 @router.post("/start")
 async def start_game(request: StartGameRequest):
-    """Start a new Guess Character game."""
-    char_data = await jikan.get_random_character(request.difficulty)
+    """Start a new Guess Character game with 4 characters."""
+    characters = []
     
-    if not char_data:
-        raise HTTPException(status_code=500, detail="Failed to fetch character")
+    # Fetch 4 characters for batch mode
+    for i in range(4):
+        char_data = await jikan.get_random_character(request.difficulty)
+        
+        if not char_data:
+            continue
+        
+        character = {
+            "id": char_data.get("mal_id"),
+            "name": char_data.get("name", "Unknown"),
+            "name_kanji": char_data.get("name_kanji"),
+            "nicknames": char_data.get("nicknames", []),
+            "image": _extract_character_image(char_data)
+        }
+        
+        anime_info = char_data.get("anime", {})
+        anime = {
+            "id": anime_info.get("mal_id"),
+            "title": anime_info.get("title", "Unknown"),
+            "title_english": anime_info.get("title_english"),
+            "title_japanese": anime_info.get("title_japanese"),
+            "year": jikan._extract_year(anime_info) if anime_info else None
+        }
+        
+        sub_game_id = f"{request.user_id}_{uuid.uuid4().hex[:8]}"
+        game = GuessCharacterGame(
+            game_id=sub_game_id,
+            user_id=request.user_id,
+            target_character=character,
+            target_anime=anime,
+            difficulty=request.difficulty,
+            max_guesses=game_config.guess_character_max_guesses
+        )
+        
+        games[sub_game_id] = game
+        
+        characters.append({
+            "game_id": sub_game_id,
+            "character_image": character["image"]
+        })
     
-    character = {
-        "id": char_data.get("mal_id"),
-        "name": char_data.get("name", "Unknown"),
-        "name_kanji": char_data.get("name_kanji"),
-        "nicknames": char_data.get("nicknames", []),
-        "image": _extract_character_image(char_data)
+    if not characters:
+        raise HTTPException(status_code=500, detail="Failed to fetch characters")
+    
+    return {
+        "difficulty": request.difficulty,
+        "characters": characters
     }
-    
-    anime_info = char_data.get("anime", {})
-    anime = {
-        "id": anime_info.get("mal_id"),
-        "title": anime_info.get("title", "Unknown"),
-        "title_english": anime_info.get("title_english"),
-        "title_japanese": anime_info.get("title_japanese"),
-        "year": jikan._extract_year(anime_info) if anime_info else None
-    }
-    
-    game_id = f"{request.user_id}_{uuid.uuid4().hex[:8]}"
-    game = GuessCharacterGame(
-        game_id=game_id,
-        user_id=request.user_id,
-        target_character=character,
-        target_anime=anime,
-        difficulty=request.difficulty,
-        max_guesses=game_config.guess_character_max_guesses
-    )
-    
-    games[game_id] = game
-    
-    return {"game_id": game_id, "difficulty": request.difficulty, "character_image": character["image"]}
 
 
 @router.post("/{game_id}/guess")

@@ -4,22 +4,28 @@ import { guessCharacterApi } from '../api/client'
 import DifficultySelector from '../components/common/DifficultySelector'
 import SearchInput from '../components/common/SearchInput'
 
-interface GameState {
+interface CharacterCard {
     gameId: string
     characterImage: string
-    isComplete: boolean
-    isWon: boolean
-    difficulty: string
+    characterName: string
+    animeName: string
     result?: {
         characterCorrect: boolean
         animeCorrect: boolean
+        isWon: boolean
     }
     target?: {
         characterName: string
-        characterImage: string
         animeTitle: string
         animeYear: number
     }
+}
+
+interface GameState {
+    isComplete: boolean
+    isWon: boolean
+    difficulty: string
+    characters: CharacterCard[]
     duration?: number
 }
 
@@ -36,8 +42,6 @@ export default function GuessCharacter() {
     const [difficulty, setDifficulty] = useState('normal')
     const [isLoading, setIsLoading] = useState(false)
     const [gameState, setGameState] = useState<GameState | null>(null)
-    const [characterName, setCharacterName] = useState('')
-    const [animeName, setAnimeName] = useState('')
     const [error, setError] = useState<string | null>(null)
 
     const startGame = async () => {
@@ -46,12 +50,20 @@ export default function GuessCharacter() {
         try {
             const userId = window.discordUser?.id || 'anonymous'
             const response = await guessCharacterApi.start(userId, difficulty)
+
+            // Initialize characters array from response
+            const characters: CharacterCard[] = response.data.characters.map((char: any) => ({
+                gameId: char.game_id,
+                characterImage: char.character_image,
+                characterName: '',
+                animeName: '',
+            }))
+
             setGameState({
-                gameId: response.data.game_id,
-                characterImage: response.data.character_image,
                 isComplete: false,
                 isWon: false,
                 difficulty: difficulty,
+                characters: characters,
             })
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Failed to start game. Please try again.')
@@ -60,56 +72,53 @@ export default function GuessCharacter() {
         }
     }
 
-    const makeGuess = async () => {
-        if (!gameState || !characterName.trim() || !animeName.trim()) return
-
-        setIsLoading(true)
-        setError(null)
-        try {
-            const response = await guessCharacterApi.guess(gameState.gameId, characterName, animeName)
-            const data = response.data
-
-            setGameState((prev) =>
-                prev
-                    ? {
-                        ...prev,
-                        isComplete: data.is_complete,
-                        isWon: data.is_won,
-                        result: {
-                            characterCorrect: data.character_correct,
-                            animeCorrect: data.anime_correct,
-                        },
-                        target: data.target,
-                        duration: data.duration,
-                    }
-                    : null
-            )
-        } catch (err: any) {
-            setError(err.response?.data?.detail || 'Failed to submit guess')
-        } finally {
-            setIsLoading(false)
-        }
+    const updateCharacterInput = (index: number, field: 'characterName' | 'animeName', value: string) => {
+        if (!gameState) return
+        setGameState(prev => {
+            if (!prev) return null
+            const newCharacters = [...prev.characters]
+            newCharacters[index] = { ...newCharacters[index], [field]: value }
+            return { ...prev, characters: newCharacters }
+        })
     }
 
-    const giveUp = async () => {
+    const makeGuess = async () => {
         if (!gameState) return
 
         setIsLoading(true)
+        setError(null)
+
         try {
-            const response = await guessCharacterApi.giveUp(gameState.gameId)
-            setGameState((prev) =>
-                prev
-                    ? {
-                        ...prev,
-                        isComplete: true,
-                        isWon: false,
-                        target: response.data.target,
-                        duration: response.data.duration,
-                    }
-                    : null
-            )
+            let totalWins = 0
+            const updatedCharacters = [...gameState.characters]
+
+            // Submit guess for each character
+            for (let i = 0; i < updatedCharacters.length; i++) {
+                const char = updatedCharacters[i]
+                const response = await guessCharacterApi.guess(char.gameId, char.characterName, char.animeName)
+                const data = response.data
+
+                updatedCharacters[i] = {
+                    ...char,
+                    result: {
+                        characterCorrect: data.character_correct,
+                        animeCorrect: data.anime_correct,
+                        isWon: data.is_won,
+                    },
+                    target: data.target,
+                }
+
+                if (data.is_won) totalWins++
+            }
+
+            setGameState({
+                ...gameState,
+                isComplete: true,
+                isWon: totalWins === updatedCharacters.length,
+                characters: updatedCharacters,
+            })
         } catch (err: any) {
-            setError(err.response?.data?.detail || 'Failed to give up')
+            setError(err.response?.data?.detail || 'Failed to submit guesses')
         } finally {
             setIsLoading(false)
         }
@@ -149,15 +158,14 @@ export default function GuessCharacter() {
                     <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
                         🎭 Guess Character
                     </h1>
-                    <p className="text-xl text-gray-300 mb-2">Name the character AND their anime!</p>
-                    <p className="text-gray-400">One chance. Both answers must be correct.</p>
+                    <p className="text-xl text-gray-300 mb-2">Name all 4 characters AND their anime!</p>
+                    <p className="text-gray-400">One chance. Both answers must be correct for each.</p>
                 </div>
 
                 <div className="card p-8 max-w-lg w-full animate-slide-up">
                     <h2 className="text-lg font-semibold mb-4 text-center">Select Difficulty</h2>
                     <DifficultySelector value={difficulty} onChange={setDifficulty} />
 
-                    {/* How to Play Section */}
                     <div className="mt-6 p-4 bg-white/5 rounded-lg border border-white/10">
                         <h3 className="font-semibold mb-3 flex items-center gap-2">
                             <span>⚠️</span> Important
@@ -169,11 +177,11 @@ export default function GuessCharacter() {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-pink-400 flex-shrink-0">•</span>
-                                <span>You must guess BOTH the character name AND the anime</span>
+                                <span>Guess all 4 characters and their anime</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-pink-400 flex-shrink-0">•</span>
-                                <span>Getting either wrong means game over!</span>
+                                <span>Each character needs both correct answers to count!</span>
                             </li>
                         </ul>
                     </div>
@@ -202,91 +210,77 @@ export default function GuessCharacter() {
         )
     }
 
-    // Game complete screen
-    if (gameState.isComplete && gameState.target) {
+    // Game complete screen - same layout as game screen but with answers
+    if (gameState.isComplete) {
         const diff = difficultyInfo[gameState.difficulty as keyof typeof difficultyInfo] || difficultyInfo.normal
+        const correctCount = gameState.characters.filter(c => c.result?.isWon).length
 
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-6">
-                <div className="card p-8 max-w-2xl w-full text-center animate-fade-in">
-                    {/* Result Icon */}
-                    <div className="text-7xl mb-4 animate-bounce">{gameState.isWon ? '🎉' : '💀'}</div>
-
-                    <h1 className="text-4xl font-bold mb-2">{gameState.isWon ? 'Perfect!' : 'Not Quite...'}</h1>
-
-                    {/* Difficulty Badge */}
-                    <div className="inline-block px-4 py-2 bg-white/10 rounded-full text-sm mb-6">
-                        {diff.emoji} {diff.label}
+            <div className="min-h-screen p-4 pb-8">
+                {/* Header */}
+                <div className="text-center pt-12 mb-6">
+                    <div className="text-5xl mb-2">{gameState.isWon ? '🎉' : '💀'}</div>
+                    <h1 className="text-3xl font-bold mb-2">
+                        {gameState.isWon ? 'Perfect!' : `${correctCount}/4 Correct`}
+                    </h1>
+                    <div className="flex items-center justify-center gap-4 text-sm">
+                        <span className="px-3 py-1 bg-white/10 rounded-full">
+                            {diff.emoji} {diff.label}
+                        </span>
                     </div>
+                </div>
 
-                    {/* Character Info */}
-                    {gameState.target.characterImage && (
-                        <img
-                            src={gameState.target.characterImage}
-                            alt={gameState.target.characterName}
-                            className="w-48 h-auto mx-auto rounded-lg shadow-xl my-6"
-                        />
-                    )}
-
-                    <h2 className="text-2xl font-bold text-anime-secondary mb-2">{gameState.target.characterName}</h2>
-                    <p className="text-xl text-gray-300 mb-6">
-                        from <span className="text-anime-primary">{gameState.target.animeTitle}</span>
-                        {gameState.target.animeYear && ` (${gameState.target.animeYear})`}
-                    </p>
-
-                    {/* Result breakdown */}
-                    {gameState.result && (
-                        <div className="flex justify-center gap-4 mb-6">
-                            <div
-                                className={`px-6 py-3 rounded-lg ${gameState.result.characterCorrect
-                                    ? 'bg-green-500/20 border border-green-500/50 text-green-300'
-                                    : 'bg-red-500/20 border border-red-500/50 text-red-300'
-                                    }`}
-                            >
-                                <div className="text-2xl mb-1">{gameState.result.characterCorrect ? '✅' : '❌'}</div>
-                                <div className="text-sm">Character</div>
+                {/* 4 Card Grid - same as game but with answers */}
+                <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    {gameState.characters.map((char, index) => (
+                        <div key={index} className="card p-4">
+                            {/* Character Image */}
+                            <div className="relative mb-4">
+                                <img
+                                    src={char.characterImage}
+                                    alt={char.target?.characterName || 'Character'}
+                                    className="w-full aspect-[3/4] object-cover rounded-lg"
+                                />
+                                {/* Result indicator overlay */}
+                                <div className={`absolute top-2 right-2 text-2xl ${char.result?.isWon ? '' : ''}`}>
+                                    {char.result?.isWon ? '✅' : '❌'}
+                                </div>
                             </div>
-                            <div
-                                className={`px-6 py-3 rounded-lg ${gameState.result.animeCorrect
-                                    ? 'bg-green-500/20 border border-green-500/50 text-green-300'
-                                    : 'bg-red-500/20 border border-red-500/50 text-red-300'
-                                    }`}
-                            >
-                                <div className="text-2xl mb-1">{gameState.result.animeCorrect ? '✅' : '❌'}</div>
-                                <div className="text-sm">Anime</div>
+
+                            {/* Answer Fields - styled like inputs */}
+                            <div className="space-y-3">
+                                <div className={`px-3 py-2 rounded-lg border ${char.result?.characterCorrect ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'}`}>
+                                    <span className={char.result?.characterCorrect ? 'text-green-400' : 'text-red-400'}>
+                                        {char.target?.characterName}
+                                    </span>
+                                </div>
+                                <div className={`px-3 py-2 rounded-lg border ${char.result?.animeCorrect ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'}`}>
+                                    <span className={char.result?.animeCorrect ? 'text-green-400' : 'text-red-400'}>
+                                        {char.target?.animeTitle}
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                    )}
+                    ))}
+                </div>
 
-                    {/* Stats */}
-                    <div className="flex justify-center gap-8 my-6 p-4 bg-white/5 rounded-lg">
-                        <div className="text-center">
-                            <div className="text-2xl font-bold">{gameState.duration}s</div>
-                            <div className="text-xs text-gray-400">Time</div>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-4 justify-center">
-                        <button
-                            onClick={() => {
-                                setGameState(null)
-                                setCharacterName('')
-                                setAnimeName('')
-                            }}
-                            className="btn btn-secondary"
-                        >
-                            🔄 Play Again
-                        </button>
-                        <Link to="/" className="btn btn-primary">
-                            🏠 Home
-                        </Link>
-                    </div>
+                {/* Buttons */}
+                <div className="flex gap-4 justify-center">
+                    <button
+                        onClick={() => setGameState(null)}
+                        className="btn btn-secondary"
+                    >
+                        🔄 Play Again
+                    </button>
+                    <Link to="/" className="btn btn-primary">
+                        🏠 Home
+                    </Link>
                 </div>
             </div>
         )
     }
 
-    // Active game screen
+    // Active game screen - 4 card layout
     const diff = difficultyInfo[gameState.difficulty as keyof typeof difficultyInfo] || difficultyInfo.normal
 
     return (
@@ -301,91 +295,67 @@ export default function GuessCharacter() {
                 </div>
             </div>
 
-            {/* Warning Banner */}
-            <div className="max-w-md mx-auto mb-4">
-                <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-300 text-sm text-center">
-                    ⚠️ <strong>ONE CHANCE ONLY!</strong> Make sure both answers are correct!
+            {error && (
+                <div className="max-w-6xl mx-auto mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-sm text-center">
+                    {error}
                 </div>
+            )}
+
+            {/* 4 Card Grid */}
+            <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {gameState.characters.map((char, index) => (
+                    <div key={index} className="card p-4">
+                        {/* Character Image */}
+                        <div className="relative mb-4">
+                            <img
+                                src={char.characterImage}
+                                alt={`Character ${index + 1}`}
+                                className="w-full aspect-[3/4] object-cover rounded-lg"
+                            />
+                        </div>
+
+                        {/* Input Fields */}
+                        <div className="space-y-3">
+                            <div>
+                                <SearchInput
+                                    value={char.characterName}
+                                    onChange={(value) => updateCharacterInput(index, 'characterName', value)}
+                                    onSearch={searchCharacter}
+                                    placeholder="Character name"
+                                    onSelect={(value) => updateCharacterInput(index, 'characterName', value)}
+                                    dropUp={false}
+                                />
+                            </div>
+                            <div>
+                                <SearchInput
+                                    value={char.animeName}
+                                    onChange={(value) => updateCharacterInput(index, 'animeName', value)}
+                                    onSearch={searchAnime}
+                                    placeholder="Anime title"
+                                    onSelect={(value) => updateCharacterInput(index, 'animeName', value)}
+                                    dropUp={false}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                ))}
             </div>
 
-            {/* Character Image */}
-            <div className="max-w-md mx-auto mb-6">
-                <div className="card p-4 animate-fade-in">
-                    {isLoading && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-lg">
-                            <div className="animate-spin text-4xl">⏳</div>
-                        </div>
+            {/* Submit Button */}
+            <div className="max-w-md mx-auto">
+                <button
+                    onClick={makeGuess}
+                    disabled={isLoading}
+                    className={`btn btn-secondary w-full py-4 text-lg ${isLoading ? 'btn-disabled' : ''}`}
+                >
+                    {isLoading ? (
+                        <span className="flex items-center justify-center gap-2">
+                            <span className="animate-spin">⏳</span> Checking...
+                        </span>
+                    ) : (
+                        'GUESS'
                     )}
-                    <img
-                        src={gameState.characterImage}
-                        alt="Mystery character"
-                        className="w-full rounded-lg shadow-xl"
-                    />
-                    <div className="mt-3 text-center text-gray-400 text-sm">
-                        Who is this character?
-                    </div>
-                </div>
-            </div>
-
-            {/* Input Area - Part of page content */}
-            <div className="max-w-2xl mx-auto mb-8">
-                {error && (
-                    <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-sm text-center">
-                        {error}
-                    </div>
-                )}
-
-                <div className="card p-6">
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2 flex items-center gap-2">
-                                <span>👤</span> Character Name
-                            </label>
-                            <SearchInput
-                                value={characterName}
-                                onChange={setCharacterName}
-                                onSearch={searchCharacter}
-                                placeholder="Enter character name..."
-                                onSelect={(value) => setCharacterName(value)}
-                                dropUp={false}
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm text-gray-400 mb-2 flex items-center gap-2">
-                                <span>🎬</span> From Anime
-                            </label>
-                            <SearchInput
-                                value={animeName}
-                                onChange={setAnimeName}
-                                onSearch={searchAnime}
-                                placeholder="Enter anime name..."
-                                onSelect={(value) => setAnimeName(value)}
-                                dropUp={false}
-                            />
-                        </div>
-
-                        <div className="flex gap-3 pt-2">
-                            <button
-                                onClick={makeGuess}
-                                disabled={isLoading || !characterName.trim() || !animeName.trim()}
-                                className={`btn btn-secondary flex-grow py-3 text-lg ${isLoading || !characterName.trim() || !animeName.trim() ? 'btn-disabled' : ''
-                                    }`}
-                            >
-                                {isLoading ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <span className="animate-spin">⏳</span> Checking...
-                                    </span>
-                                ) : (
-                                    '🎯 Submit Guess'
-                                )}
-                            </button>
-                            <button onClick={giveUp} disabled={isLoading} className="btn btn-danger px-6">
-                                Give Up
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                </button>
             </div>
         </div>
     )

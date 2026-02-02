@@ -36,8 +36,8 @@ export async function setupDiscord(): Promise<DiscordUser> {
     return {
         id: auth.user.id,
         username: auth.user.username,
-        discriminator: auth.user.discriminator || '0000',
-        avatar: auth.user.avatar,
+        discriminator: auth.user.discriminator ?? '0000',
+        avatar: auth.user.avatar ?? null,
     }
 }
 

@@ -31,6 +31,26 @@ const games = [
         difficulty: 'Hard',
         tries: '1 try',
     },
+    {
+        id: 'guess-opening',
+        name: 'Guess OP',
+        description: 'Listen to the opening song and guess which anime it belongs to!',
+        emoji: '🎵',
+        color: 'from-blue-500 to-cyan-500',
+        path: '/guess-opening',
+        difficulty: 'Medium',
+        tries: '1 try',
+    },
+    {
+        id: 'guess-ending',
+        name: 'Guess ED',
+        description: 'Listen to the ending song and guess which anime it belongs to!',
+        emoji: '🎶',
+        color: 'from-purple-500 to-pink-500',
+        path: '/guess-ending',
+        difficulty: 'Medium',
+        tries: '1 try',
+    },
 ]
 
 export default function Home() {
@@ -88,13 +108,12 @@ export default function Home() {
                                             {game.tries}
                                         </span>
                                         <span
-                                            className={`px-2 py-1 rounded text-xs ${
-                                                game.difficulty === 'Easy'
+                                            className={`px-2 py-1 rounded text-xs ${game.difficulty === 'Easy'
                                                     ? 'bg-green-500/20 text-green-300'
                                                     : game.difficulty === 'Medium'
-                                                    ? 'bg-yellow-500/20 text-yellow-300'
-                                                    : 'bg-red-500/20 text-red-300'
-                                            }`}
+                                                        ? 'bg-yellow-500/20 text-yellow-300'
+                                                        : 'bg-red-500/20 text-red-300'
+                                                }`}
                                         >
                                             {game.difficulty}
                                         </span>

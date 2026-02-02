@@ -48,7 +48,24 @@ export const guessCharacterApi = {
     giveUp: (gameId: string) => api.post(`/guess-character/${gameId}/giveup`),
     status: (gameId: string) => api.get(`/guess-character/${gameId}/status`),
     searchCharacter: (query: string) => api.get('/guess-character/search-character', { params: { q: query, limit: 25 } }),
-    searchAnime: (query: string) => api.get('/guess-character/search-anime', { params: { q: query, limit: 25 } }),
+    searchAnime: (query: string) => api.get('/guess-character/search/anime', { params: { q: query, limit: 25 } }),
+}
+
+export const guessOpApi = {
+    start: (userId: string, difficulty: string) => api.post('/guess-theme/op/start', { user_id: userId, difficulty }),
+    guess: (gameId: string, animeName: string) => api.post(`/guess-theme/${gameId}/guess`, { anime_name: animeName }),
+    reveal: (gameId: string) => api.post(`/guess-theme/${gameId}/reveal`),
+    giveUp: (gameId: string) => api.post(`/guess-theme/${gameId}/giveup`),
+    search: (query: string) => api.get('/guess-theme/search/anime', { params: { q: query, limit: 25 } }),
+}
+
+export const guessEdApi = {
+    start: (userId: string, difficulty: string) => api.post('/guess-theme/ed/start', { user_id: userId, difficulty }),
+    guess: (gameId: string, animeName: string) => api.post(`/guess-theme/${gameId}/guess`, { anime_name: animeName }),
+    reveal: (gameId: string) => api.post(`/guess-theme/${gameId}/reveal`),
+    giveUp: (gameId: string) => api.post(`/guess-theme/${gameId}/giveup`),
+    search: (query: string) => api.get('/guess-theme/search/anime', { params: { q: query, limit: 25 } }),
 }
 
 export default api
+

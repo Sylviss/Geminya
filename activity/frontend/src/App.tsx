@@ -6,6 +6,8 @@ import Home from './pages/Home'
 import Anidle from './pages/Anidle'
 import GuessAnime from './pages/GuessAnime'
 import GuessCharacter from './pages/GuessCharacter'
+import GuessOpening from './pages/GuessOpening'
+import GuessEnding from './pages/GuessEnding'
 
 declare global {
     interface Window {
@@ -16,7 +18,7 @@ declare global {
 function App() {
     const [isReady, setIsReady] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [discordUser, setDiscordUser] = useState<DiscordUser | null>(null)
+    const [_discordUser, setDiscordUser] = useState<DiscordUser | null>(null)
 
     useEffect(() => {
         async function init() {
@@ -74,6 +76,8 @@ function App() {
                         <Route path="/anidle" element={<Anidle />} />
                         <Route path="/guess-anime" element={<GuessAnime />} />
                         <Route path="/guess-character" element={<GuessCharacter />} />
+                        <Route path="/guess-opening" element={<GuessOpening />} />
+                        <Route path="/guess-ending" element={<GuessEnding />} />
                     </Routes>
                 </div>
             </div>

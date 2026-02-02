@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import anidle, guess_anime, guess_character
+from routers import anidle, guess_anime, guess_character, guess_theme
 from services.ids_service import ids_service
 
 # Configure logging
@@ -75,6 +75,7 @@ app.add_middleware(
 app.include_router(anidle.router, prefix="/api/anidle", tags=["anidle"])
 app.include_router(guess_anime.router, prefix="/api/guess-anime", tags=["guess-anime"])
 app.include_router(guess_character.router, prefix="/api/guess-character", tags=["guess-character"])
+app.include_router(guess_theme.router, prefix="/api/guess-theme", tags=["guess-theme"])
 
 
 @app.get("/")
@@ -83,7 +84,7 @@ async def root():
     return {
         "name": "Geminya Mini-Games API",
         "version": "1.0.0",
-        "games": ["anidle", "guess-anime", "guess-character"]
+        "games": ["anidle", "guess-anime", "guess-character", "guess-op", "guess-ed"]
     }
 
 
