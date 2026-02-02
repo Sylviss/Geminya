@@ -16,21 +16,35 @@ export async function setupDiscord(): Promise<DiscordUser> {
         throw new Error('Discord Client ID not configured')
     }
 
+    console.log('Initializing Discord SDK with Client ID:', CLIENT_ID)
+    
     discordSdk = new DiscordSDK(CLIENT_ID)
+    
+    console.log('Waiting for SDK ready...')
     await discordSdk.ready()
+    console.log('SDK ready!')
 
+    // Authorize with OAuth2
+    console.log('Requesting authorization...')
     const { code } = await discordSdk.commands.authorize({
         client_id: CLIENT_ID,
         response_type: 'code',
         state: '',
         prompt: 'none',
-        scope: ['identify'],
+        scope: ['identify', 'guilds'],
+    })
+    
+    console.log('Got authorization code, authenticating...')
+
+    // Authenticate directly with the code
+    const auth = await discordSdk.commands.authenticate({
+        access_token: code,
     })
 
-    const auth = await discordSdk.commands.authenticate({ access_token: code })
+    console.log('Authentication result:', auth)
 
-    if (!auth.user) {
-        throw new Error('Failed to get user info from Discord')
+    if (auth == null || auth.user == null) {
+        throw new Error('Authenticate command failed - no user returned')
     }
 
     return {
