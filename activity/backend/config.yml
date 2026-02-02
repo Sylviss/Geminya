@@ -1,0 +1,54 @@
+# Activity Backend Games Configuration
+# This file provides settings for the mini-games (Anidle, Guess Anime, Guess Character)
+
+# Global settings
+global:
+  # Hard minimum member count - anime below this are excluded from all difficulties
+  min_members: 7500
+  
+  # API settings
+  search_limit: 25  # Default limit for search results
+  
+  # Retry settings
+  max_retries: 5  # Max attempts to find suitable anime/character
+
+# Anime selection configuration (for Anidle, Guess Anime, Guess Character)
+# Now uses MAL popularity ranking (1 = most popular, 8000 = ~7500 members)
+anime_selection:
+  rank_ranges:
+    easy:
+      "1-500": 10      # Top 500 most popular (highest chance)
+      "501-1000": 2    # Top 1000
+
+    normal:
+      "500-1500": 10   # Popular anime (highest chance)
+      "1501-2500": 5   # Moderately popular
+
+    hard:
+      "2000-3500": 10  # Less popular (highest chance)
+      "3501-4500": 5   # Obscure
+
+    expert:
+      "3500-5000": 10  # Obscure (highest chance)
+      "5001-6000": 5   # Very obscure
+
+    crazy:
+      "5000-6500": 10  # Very obscure (highest chance)
+      "6501-7500": 3   # Extremely obscure
+
+    insanity:
+      "6500-8000": 10  # Extremely obscure (highest chance)
+      "7500-8000": 2   # Nearly unknown (~7500 members)
+
+# Game-specific settings
+games:
+  anidle:
+    max_guesses: 21
+    hint_penalty: 3  # Guesses deducted per hint
+    
+  guess_anime:
+    max_guesses: 1  # Only 1 guess allowed - wrong guess ends game
+    min_screenshots: 4  # 4 images + 1 name hint = 5 stages total
+    
+  guess_character:
+    max_guesses: 1
