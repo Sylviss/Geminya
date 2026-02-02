@@ -71,11 +71,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(anidle.router, prefix="/api/anidle", tags=["anidle"])
-app.include_router(guess_anime.router, prefix="/api/guess-anime", tags=["guess-anime"])
-app.include_router(guess_character.router, prefix="/api/guess-character", tags=["guess-character"])
-app.include_router(guess_theme.router, prefix="/api/guess-theme", tags=["guess-theme"])
+# Include routers (no /api prefix - Discord handles routing)
+app.include_router(anidle.router, prefix="/anidle", tags=["anidle"])
+app.include_router(guess_anime.router, prefix="/guess-anime", tags=["guess-anime"])
+app.include_router(guess_character.router, prefix="/guess-character", tags=["guess-character"])
+app.include_router(guess_theme.router, prefix="/guess-theme", tags=["guess-theme"])
 
 
 @app.get("/")
