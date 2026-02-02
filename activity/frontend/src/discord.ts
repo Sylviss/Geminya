@@ -24,7 +24,7 @@ export async function setupDiscord(): Promise<DiscordUser> {
     await discordSdk.ready()
     console.log('SDK ready!')
 
-    // Authorize with OAuth2
+    // For Activities, we just need to authorize - no token exchange needed
     console.log('Requesting authorization...')
     const { code } = await discordSdk.commands.authorize({
         client_id: CLIENT_ID,
@@ -34,24 +34,25 @@ export async function setupDiscord(): Promise<DiscordUser> {
         scope: ['identify', 'guilds'],
     })
     
-    console.log('Got authorization code, authenticating...')
+    console.log('Authorization complete with code:', code)
 
-    // Authenticate directly with the code
-    const auth = await discordSdk.commands.authenticate({
-        access_token: code,
-    })
-
-    console.log('Authentication result:', auth)
-
-    if (auth == null || auth.user == null) {
-        throw new Error('Authenticate command failed - no user returned')
+    // Get user info directly from the SDK
+    // The SDK's instanceId gives us access to the user
+    const user = await discordSdk.commands.getInstanceConnectedParticipants()
+    
+    if (!user || !user.participants || user.participants.length === 0) {
+        throw new Error('No user found in activity')
     }
 
+    const currentUser = user.participants[0]
+
+    console.log('Got user:', currentUser)
+
     return {
-        id: auth.user.id,
-        username: auth.user.username,
-        discriminator: auth.user.discriminator ?? '0000',
-        avatar: auth.user.avatar ?? null,
+        id: currentUser.id,
+        username: currentUser.username,
+        discriminator: '0000',
+        avatar: currentUser.avatar ?? null,
     }
 }
 
