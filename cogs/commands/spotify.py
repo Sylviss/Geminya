@@ -1484,10 +1484,11 @@ class SpotifyMusicCog(BaseCommand):
 
 async def setup(bot: commands.Bot):
     """Setup function for the cog."""
-    services = getattr(bot, "services", None)
-    if services and services.get_spotify_service() and services.get_music_service():
-        await bot.add_cog(SpotifyMusicCog(bot, services))
-    else:
-        logging.getLogger(__name__).warning(
-            "Spotify services not available - music cog not loaded"
-        )
+    # services = getattr(bot, "services", None)
+    # if services and services.get_spotify_service() and services.get_music_service():
+    #     await bot.add_cog(SpotifyMusicCog(bot, services))
+    # else:
+    #     logging.getLogger(__name__).warning(
+    #         "Spotify services not available - music cog not loaded"
+    #     )
+    pass
