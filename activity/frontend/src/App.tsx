@@ -9,6 +9,8 @@ import GuessCharacter from './pages/GuessCharacter'
 import GuessOpening from './pages/GuessOpening'
 import GuessEnding from './pages/GuessEnding'
 import Academy from './pages/Academy'
+import Banners from './pages/Banners'
+import Summon from './pages/Summon'
 
 declare global {
     interface Window {
@@ -84,6 +86,8 @@ function App() {
                         <Route path="/guess-opening" element={<GuessOpening />} />
                         <Route path="/guess-ending" element={<GuessEnding />} />
                         <Route path="/academy" element={<Academy />} />
+                        <Route path="/banners" element={<Banners />} />
+                        <Route path="/summon" element={<Summon />} />
                     </Routes>
                 </div>
             </div>

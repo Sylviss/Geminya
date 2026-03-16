@@ -311,6 +311,258 @@ class NwnlDatabaseService:
         return enhanced
 
     # ═══════════════════════════════════════════════════════════════════
+    #  Banners
+    # ═══════════════════════════════════════════════════════════════════
+
+    async def list_active_banners(self) -> List[Dict[str, Any]]:
+        """Return all banners where is_active = TRUE."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("SELECT * FROM banners WHERE is_active = TRUE ORDER BY id")
+            return [dict(row) for row in rows]
+
+    async def get_banner(self, banner_id: int) -> Optional[Dict[str, Any]]:
+        """Return a single banner by primary key."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT * FROM banners WHERE id = $1", banner_id)
+            return dict(row) if row else None
+
+    async def get_banner_items(self, banner_id: int) -> List[Dict[str, Any]]:
+        """Return all banner_items rows for a banner."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("SELECT * FROM banner_items WHERE banner_id = $1", banner_id)
+            return [dict(row) for row in rows]
+
+    # ═══════════════════════════════════════════════════════════════════
+    #  Waifu Data (for gacha pool building)
+    # ═══════════════════════════════════════════════════════════════════
+
+    async def get_all_waifus(self) -> List[Dict[str, Any]]:
+        """Return all waifu records (name, rarity, series, image, stats, etc.)."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT waifu_id, name, series, series_id, rarity, image_url, archetype, "
+                "stats, elemental_type, potency, elemental_resistances, favorite_gifts, special_dialogue "
+                "FROM waifus ORDER BY waifu_id"
+            )
+            return [_parse_waifu_json_fields(dict(row)) for row in rows]
+
+    async def get_waifus_by_ids(self, waifu_ids: List[int]) -> List[Dict[str, Any]]:
+        """Return waifu records for a given list of waifu_ids."""
+        if not waifu_ids:
+            return []
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT waifu_id, name, series, series_id, rarity, image_url, archetype, "
+                "stats, elemental_type, potency, elemental_resistances, favorite_gifts, special_dialogue "
+                "FROM waifus WHERE waifu_id = ANY($1::int[])",
+                waifu_ids,
+            )
+            return [_parse_waifu_json_fields(dict(row)) for row in rows]
+
+    async def get_waifu_by_id(self, waifu_id: int) -> Optional[Dict[str, Any]]:
+        """Return a single waifu by waifu_id."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT waifu_id, name, series, series_id, rarity, image_url, archetype, "
+                "stats, elemental_type, potency, elemental_resistances, favorite_gifts, special_dialogue "
+                "FROM waifus WHERE waifu_id = $1",
+                waifu_id,
+            )
+            return _parse_waifu_json_fields(dict(row)) if row else None
+
+    # ═══════════════════════════════════════════════════════════════════
+    #  Currency & Pity (for summon)
+    # ═══════════════════════════════════════════════════════════════════
+
+    async def update_user_quartzs(self, discord_id: str, amount: int) -> bool:
+        """Add/subtract quartzs."""
+        async with self.pool.acquire() as conn:
+            result = await conn.execute(
+                "UPDATE users SET quartzs = quartzs + $1 WHERE discord_id = $2",
+                amount, discord_id,
+            )
+            return result[-1] != "0"
+
+    async def update_user_daphine(self, discord_id: str, amount: int) -> bool:
+        """Add daphine."""
+        async with self.pool.acquire() as conn:
+            result = await conn.execute(
+                "UPDATE users SET daphine = daphine + $1 WHERE discord_id = $2",
+                amount, discord_id,
+            )
+            return result[-1] != "0"
+
+    async def remove_user_daphine(self, discord_id: str, amount: int) -> bool:
+        """Remove daphine if sufficient balance; returns False if insufficient."""
+        async with self.pool.acquire() as conn:
+            result = await conn.execute(
+                "UPDATE users SET daphine = daphine - $1 WHERE discord_id = $2 AND daphine >= $1",
+                amount, discord_id,
+            )
+            return result[-1] != "0"
+
+    async def update_pity_counter(self, discord_id: str, reset: bool = False) -> bool:
+        """Increment or reset the pity counter."""
+        async with self.pool.acquire() as conn:
+            if reset:
+                result = await conn.execute(
+                    "UPDATE users SET pity_counter = 0 WHERE discord_id = $1", discord_id
+                )
+            else:
+                result = await conn.execute(
+                    "UPDATE users SET pity_counter = pity_counter + 1 WHERE discord_id = $1", discord_id
+                )
+            return result[-1] != "0"
+
+    async def clamp_user_pity_counter(self, discord_id: str, max_pity: int) -> bool:
+        """Ensure pity counter never exceeds max_pity."""
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE users SET pity_counter = $1 WHERE discord_id = $2 AND pity_counter > $1",
+                max_pity, discord_id,
+            )
+            return True
+
+    # ═══════════════════════════════════════════════════════════════════
+    #  Character Shards & Star Level (for summon results)
+    # ═══════════════════════════════════════════════════════════════════
+
+    async def add_waifu_to_collection(self, discord_id: str, waifu_id: int) -> bool:
+        """Add a new waifu to user collection (no-op if already owned). Returns True if inserted."""
+        async with self.pool.acquire() as conn:
+            user_row = await conn.fetchrow(
+                "SELECT id FROM users WHERE discord_id = $1", discord_id
+            )
+            if not user_row:
+                return False
+            uid = user_row["id"]
+            result = await conn.execute(
+                "INSERT INTO user_waifus (user_id, waifu_id, obtained_at) VALUES ($1, $2, NOW()) ON CONFLICT DO NOTHING",
+                uid, waifu_id,
+            )
+            return result.split()[-1] != "0"
+
+    async def set_character_initial_star(self, discord_id: str, waifu_id: int, star_level: int) -> bool:
+        """Set the initial star level for a freshly-added character."""
+        async with self.pool.acquire() as conn:
+            user_row = await conn.fetchrow(
+                "SELECT id FROM users WHERE discord_id = $1", discord_id
+            )
+            if not user_row:
+                return False
+            result = await conn.execute(
+                "UPDATE user_waifus SET current_star_level = $1 WHERE user_id = $2 AND waifu_id = $3",
+                star_level, user_row["id"], waifu_id,
+            )
+            return result[-1] != "0"
+
+    async def get_character_shards(self, discord_id: str, waifu_id: int) -> int:
+        """Get current star_shards for a character in a user's collection."""
+        async with self.pool.acquire() as conn:
+            user_row = await conn.fetchrow(
+                "SELECT id FROM users WHERE discord_id = $1", discord_id
+            )
+            if not user_row:
+                return 0
+            row = await conn.fetchrow(
+                "SELECT star_shards FROM user_waifus WHERE user_id = $1 AND waifu_id = $2",
+                user_row["id"], waifu_id,
+            )
+            return (row["star_shards"] or 0) if row else 0
+
+    async def add_character_shards(self, discord_id: str, waifu_id: int, amount: int) -> None:
+        """Add star_shards to a character."""
+        async with self.pool.acquire() as conn:
+            user_row = await conn.fetchrow(
+                "SELECT id FROM users WHERE discord_id = $1", discord_id
+            )
+            if not user_row:
+                return
+            await conn.execute(
+                "UPDATE user_waifus SET star_shards = star_shards + $1 WHERE user_id = $2 AND waifu_id = $3",
+                amount, user_row["id"], waifu_id,
+            )
+
+    async def update_character_star_and_shards(
+        self, discord_id: str, waifu_id: int, star_level: int, shards: int
+    ) -> bool:
+        """Atomically set current_star_level and star_shards for a character."""
+        async with self.pool.acquire() as conn:
+            user_row = await conn.fetchrow(
+                "SELECT id FROM users WHERE discord_id = $1", discord_id
+            )
+            if not user_row:
+                return False
+            result = await conn.execute(
+                "UPDATE user_waifus SET current_star_level = $1, star_shards = $2 WHERE user_id = $3 AND waifu_id = $4",
+                star_level, shards, user_row["id"], waifu_id,
+            )
+            return result[-1] != "0"
+
+    async def get_character_star_level(self, discord_id: str, waifu_id: int) -> int:
+        """Get current star level of a character (falls back to base rarity)."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT uw.current_star_level, w.rarity
+                FROM user_waifus uw
+                JOIN waifus w ON uw.waifu_id = w.waifu_id
+                JOIN users u ON uw.user_id = u.id
+                WHERE u.discord_id = $1 AND uw.waifu_id = $2
+                LIMIT 1
+                """,
+                discord_id, waifu_id,
+            )
+            if row:
+                return row["current_star_level"] if row["current_star_level"] is not None else row["rarity"]
+            fallback = await conn.fetchrow("SELECT rarity FROM waifus WHERE waifu_id = $1", waifu_id)
+            return fallback["rarity"] if fallback else 1
+
+    async def get_user_waifu(self, discord_id: str, waifu_id: int) -> Optional[Dict[str, Any]]:
+        """Return a user_waifu row + waifu metadata for a specific waifu. None if not owned."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT uw.id as user_waifu_id, uw.waifu_id, uw.current_star_level,
+                       uw.star_shards, uw.is_awakened, w.name, w.series, w.rarity,
+                       w.image_url, w.archetype, w.stats, w.elemental_type
+                FROM user_waifus uw
+                JOIN waifus w ON uw.waifu_id = w.waifu_id
+                JOIN users u ON uw.user_id = u.id
+                WHERE u.discord_id = $1 AND uw.waifu_id = $2
+                """,
+                discord_id, waifu_id,
+            )
+            return _parse_waifu_json_fields(dict(row)) if row else None
+
+    async def awaken_user_waifu(self, discord_id: str, waifu_id: int) -> Dict[str, Any]:
+        """Awaken a waifu consuming 1 Daphine. Returns result dict with success/message."""
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                user = await conn.fetchrow(
+                    "SELECT id, daphine FROM users WHERE discord_id = $1", discord_id
+                )
+                if not user:
+                    return {"success": False, "message": "User not found."}
+                if user["daphine"] < 1:
+                    return {"success": False, "message": "You do not have any Daphine. 🦋"}
+                user_waifu = await conn.fetchrow(
+                    "SELECT id, is_awakened FROM user_waifus WHERE user_id = $1 AND waifu_id = $2",
+                    user["id"], waifu_id,
+                )
+                if not user_waifu:
+                    return {"success": False, "message": "You do not own this waifu."}
+                if user_waifu["is_awakened"]:
+                    return {"success": False, "message": "This waifu is already awakened."}
+                await conn.execute(
+                    "UPDATE users SET daphine = daphine - 1 WHERE id = $1", user["id"]
+                )
+                await conn.execute(
+                    "UPDATE user_waifus SET is_awakened = TRUE WHERE id = $1", user_waifu["id"]
+                )
+                return {"success": True, "message": "Waifu awakened successfully! 🦋"}
+
+    # ═══════════════════════════════════════════════════════════════════
     #  Daily Missions
     # ═══════════════════════════════════════════════════════════════════
 
