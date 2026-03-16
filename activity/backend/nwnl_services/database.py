@@ -430,24 +430,17 @@ class NwnlDatabaseService:
     async def add_waifu_to_collection(self, discord_id: str, waifu_id: int) -> bool:
         """Add a new waifu to user collection (no-op if already owned). Returns True if inserted."""
         async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                user_row = await conn.fetchrow(
-                    "SELECT id FROM users WHERE discord_id = $1", discord_id
-                )
-                if not user_row:
-                    return False
-                uid = user_row["id"]
-                existing = await conn.fetchrow(
-                    "SELECT id FROM user_waifus WHERE user_id = $1 AND waifu_id = $2 FOR UPDATE",
-                    uid, waifu_id,
-                )
-                if existing:
-                    return False
-                await conn.execute(
-                    "INSERT INTO user_waifus (user_id, waifu_id, obtained_at) VALUES ($1, $2, NOW())",
-                    uid, waifu_id,
-                )
-                return True
+            user_row = await conn.fetchrow(
+                "SELECT id FROM users WHERE discord_id = $1", discord_id
+            )
+            if not user_row:
+                return False
+            uid = user_row["id"]
+            result = await conn.execute(
+                "INSERT INTO user_waifus (user_id, waifu_id, obtained_at) VALUES ($1, $2, NOW()) ON CONFLICT DO NOTHING",
+                uid, waifu_id,
+            )
+            return result.split()[-1] != "0"
 
     async def set_character_initial_star(self, discord_id: str, waifu_id: int, star_level: int) -> bool:
         """Set the initial star level for a freshly-added character."""
@@ -475,7 +468,7 @@ class NwnlDatabaseService:
                 "SELECT star_shards FROM user_waifus WHERE user_id = $1 AND waifu_id = $2",
                 user_row["id"], waifu_id,
             )
-            return row["star_shards"] if row else 0
+            return (row["star_shards"] or 0) if row else 0
 
     async def add_character_shards(self, discord_id: str, waifu_id: int, amount: int) -> None:
         """Add star_shards to a character."""

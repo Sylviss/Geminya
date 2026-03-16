@@ -87,7 +87,9 @@ export default function Summon() {
             setQuartzs(s.quartzs ?? 0)
             setDaphine(s.daphine ?? 0)
             setPityCounter(s.pity_counter ?? 0)
-        } catch (_) {}
+        } catch (err) {
+            console.error('Failed to load summon data:', err)
+        }
     }, [])
 
     useEffect(() => { loadData() }, [loadData])

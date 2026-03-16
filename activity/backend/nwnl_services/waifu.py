@@ -23,6 +23,13 @@ DEFAULT_SUMMON_COST = 10
 DEFAULT_CURRENCY = "sakura_crystals"
 
 
+# Rate-up weight multipliers (relative to normal pool)
+# Rate-up characters get weight = (n_normal / RATE_UP_DIVISOR)
+# Normal characters get weight = (n_rate_up * RATE_UP_MULTIPLIER)
+RATE_UP_DIVISOR = 2.0
+RATE_UP_MULTIPLIER = 1.5
+
+
 class NwnlWaifuService:
     """Standalone gacha service for Activity backend."""
 
@@ -319,7 +326,7 @@ class NwnlWaifuService:
             n_normal = len(pool) - n_rate_up
             if n_rate_up > 0 and n_normal > 0:
                 weights = [
-                    (n_normal / 2) if w["waifu_id"] in rate_up_ids else (n_rate_up * 1.5)
+                    (n_normal / RATE_UP_DIVISOR) if w["waifu_id"] in rate_up_ids else (n_rate_up * RATE_UP_MULTIPLIER)
                     for w in pool
                 ]
             else:
