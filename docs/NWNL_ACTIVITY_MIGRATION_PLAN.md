@@ -4,13 +4,14 @@
 
 This document describes the plan to migrate the entire NWNL and World Threat command system from the Discord bot (discord.py slash commands + Views) into the Discord Activity (React frontend + FastAPI backend).
 
-**Approach: Move & Delete.** For each cog, build the API routes and React UI in the Activity, verify feature parity, then delete the original cog. No shared library needed — since the entire repo is deployed on Koyeb, the activity backend directly imports the existing services via relative import.
+**Approach: Move & Delete.** For each cog, build API routes and React UI in the Activity, verify feature parity, then delete the original cog.
+
+**Service Strategy: Standalone services.** The activity backend has its own service layer in `activity/backend/nwnl_services/` that connects directly to PostgreSQL via `asyncpg`. The bot and activity share the **same database** but have **separate service code**. This avoids importing the bot's dependency tree (`discord.py`, LLMs, etc.) into the activity backend. After migration, unused bot services will be removed.
 
 ```
-from services.database import DatabaseService
-from services.waifu_service import WaifuService
-from services.expedition_service import ExpeditionService
-from services.world_threat_service import WorldThreatService
+from nwnl_services.database import NwnlDatabaseService
+# Future: from nwnl_services.waifu import NwnlWaifuService
+# Future: from nwnl_services.expedition import NwnlExpeditionService
 ```
 
 ---
@@ -28,26 +29,31 @@ Discord Client (iframe)
             └── activity/backend/main.py (FastAPI)
                     ├── Existing quiz game routers
                     ├── NEW /api/nwnl/* routers
-                    └── Imports services.* directly (repo root on sys.path)
+                    └── nwnl_services/  ← standalone service layer
+                            ├── database.py (asyncpg pool + queries)
+                            ├── waifu.py    (gacha, stats, rank logic)
+                            └── ...         (built incrementally per cog)
 ```
 
-The bot (discord.py) and activity backend share the **same PostgreSQL database** and the **same service layer** — no duplication.
+The bot (discord.py) and activity backend share the **same PostgreSQL database** but have **separate service code**.
 
 ---
 
-## Phase 1 — Foundation (1–2 days)
+## Phase 1 — Foundation ✅ COMPLETE
 
-Get the service layer importable and wired into FastAPI.
+Standalone service layer wired into FastAPI.
 
-| Task | Details |
-|------|---------|
-| **sys.path fix** | In `activity/backend/main.py`, add repo root to `sys.path` so `from services.X import Y` resolves |
-| **Add `asyncpg`** | Add to `activity/backend/requirements.txt` |
-| **Wire services in lifespan** | Initialize `DatabaseService` + all three services in FastAPI's `lifespan` context manager, attach to `app.state` |
-| **Auth dependency** | `Depends()` function that reads `X-User-ID` header, calls `ensure_user_exists`, returns `discord_id` |
-| **Request locking** | Per-user `asyncio.Lock` dict — replaces bot's `CommandQueueService`, prevents race conditions |
-| **Guild context** | Read `X-Guild-ID` header from frontend (populated from `discordSdk.guildId`) for World Threat server-wide features |
-| **Ban checking** | Middleware that checks `banned.json` before any `/api/nwnl/*` request |
+| Task | Status |
+|------|--------|
+| **Add `asyncpg`** | ✅ Added to `requirements.txt` |
+| **`NwnlDatabaseService`** | ✅ `nwnl_services/database.py` — asyncpg pool + `get_or_create_user` |
+| **`NwnlConfig`** | ✅ `nwnl_config.py` — reads Postgres creds from `secrets.json` |
+| **Wire in lifespan** | ✅ `main.py` — initializes `NwnlDatabaseService`, attaches to `app.state.nwnl_db` |
+| **Auth dependency** | ✅ `nwnl_deps.py` — `get_current_user` reads `X-User-ID`, ensures user exists |
+| **Request locking** | ✅ `nwnl_deps.py` — `get_user_lock` per-user `asyncio.Lock` dict |
+| **Guild context** | ✅ `nwnl_deps.py` — `get_guild_id` reads `X-Guild-ID` header |
+| **Frontend headers** | ✅ `client.ts` sends `X-Guild-ID`, `discord.ts` exports `getGuildId()` |
+| **Ban checking** | ✅ `nwnl_middleware.py` — checks `banned.json` for `/api/nwnl/*` |
 
 ---
 

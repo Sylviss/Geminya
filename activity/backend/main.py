@@ -21,10 +21,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+REPO_ROOT = Path(__file__).parent.parent.parent
+
 
 def load_secrets():
     """Load secrets from secrets.json."""
-    secrets_path = Path(__file__).parent.parent.parent / "secrets.json"
+    secrets_path = REPO_ROOT / "secrets.json"
     if secrets_path.exists():
         with open(secrets_path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -58,10 +60,47 @@ async def lifespan(app: FastAPI):
         logger.warning("   Get your API key at: https://ids.moe")
         logger.warning("⚠️ Guess Anime game will not work without IDS_MOE_API_KEY!")
     
+    # ── NWNL Service Layer Initialization ──
+    nwnl_ready = False
+    try:
+        from nwnl_config import NwnlConfig
+        from nwnl_services.database import NwnlDatabaseService
+
+        nwnl_config = NwnlConfig(secrets)
+        pg_conf = nwnl_config.get_postgres_config()
+
+        if pg_conf["host"] and pg_conf["database"]:
+            nwnl_db = NwnlDatabaseService(pg_conf)
+            await nwnl_db.initialize()
+
+            app.state.nwnl_db = nwnl_db
+            app.state.user_locks = {}
+
+            nwnl_ready = True
+            logger.info("✅ NWNL database service initialized")
+        else:
+            logger.warning("⚠️ PostgreSQL not configured — NWNL services disabled")
+            app.state.nwnl_db = None
+            app.state.user_locks = {}
+
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize NWNL services: {e}", exc_info=True)
+        app.state.nwnl_db = None
+        app.state.user_locks = {}
+
+    app.state.nwnl_ready = nwnl_ready
+    
     yield
     
     # Shutdown
     logger.info("👋 Shutting down Geminya Mini-Games API...")
+    
+    if getattr(app.state, "nwnl_db", None):
+        try:
+            await app.state.nwnl_db.close()
+            logger.info("✅ NWNL services cleaned up")
+        except Exception as e:
+            logger.error(f"Error cleaning up NWNL services: {e}")
 
 
 
@@ -75,18 +114,26 @@ app = FastAPI(
 # CORS middleware for Discord Activity iframe
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Discord Activity will use proxy
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers (no /api prefix - Discord handles routing)
+# Ban middleware for NWNL routes
+from nwnl_middleware import NwnlBanMiddleware
+app.add_middleware(NwnlBanMiddleware)
+
+# Include routers
 app.include_router(anidle.router, prefix="/anidle", tags=["anidle"])
 app.include_router(guess_anime.router, prefix="/guess-anime", tags=["guess-anime"])
 app.include_router(guess_character.router, prefix="/guess-character", tags=["guess-character"])
 app.include_router(guess_theme.router, prefix="/guess-theme", tags=["guess-theme"])
 app.include_router(media_proxy.router, prefix="/media", tags=["media"])
+
+# NWNL Academy routes
+from routers.nwnl_academy import router as nwnl_academy_router
+app.include_router(nwnl_academy_router, prefix="/api/nwnl/academy", tags=["nwnl-academy"])
 
 
 class TokenRequest(BaseModel):
@@ -136,12 +183,17 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
+    nwnl_db = getattr(app.state, "nwnl_db", None)
     return {
         "status": "healthy",
         "apis": {
             "jikan": "configured",
             "shikimori": "configured",
             "ids_moe": "configured" if ids_service._api_key else "not configured"
+        },
+        "nwnl_services": {
+            "status": "ready" if getattr(app.state, "nwnl_ready", False) else "unavailable",
+            "database": "connected" if nwnl_db and nwnl_db.pool else "disconnected",
         }
     }
 
@@ -149,4 +201,3 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)
-

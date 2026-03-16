@@ -74,3 +74,7 @@ export async function setupDiscord(): Promise<DiscordUser> {
 export function getDiscordSdk(): DiscordSDK | null {
     return discordSdk
 }
+
+export function getGuildId(): string | null {
+    return discordSdk?.guildId ?? null
+}

@@ -65,6 +65,19 @@ export default function Sidebar() {
                         <span className="font-medium text-xs">{game.name}</span>
                     </Link>
                 ))}
+
+                {/* NWNL Section */}
+                <div className="border-t border-white/10 my-1" />
+                <Link
+                    to="/academy"
+                    className={`w-full h-10 rounded-xl flex items-center gap-2 px-2 transition-all ${location.pathname === '/academy'
+                        ? 'bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg'
+                        : 'hover:bg-white/10'
+                        }`}
+                >
+                    <span className="text-lg">🏫</span>
+                    <span className="font-medium text-xs">Academy</span>
+                </Link>
             </div>
 
             {/* Discord User (if available) */}
