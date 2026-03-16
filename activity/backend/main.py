@@ -133,7 +133,7 @@ app.include_router(media_proxy.router, prefix="/media", tags=["media"])
 
 # NWNL Academy routes
 from routers.nwnl_academy import router as nwnl_academy_router
-app.include_router(nwnl_academy_router, prefix="/api/nwnl/academy", tags=["nwnl-academy"])
+app.include_router(nwnl_academy_router, prefix="/nwnl/academy", tags=["nwnl-academy"])
 
 
 class TokenRequest(BaseModel):

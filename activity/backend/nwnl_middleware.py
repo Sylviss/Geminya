@@ -46,7 +46,7 @@ class NwnlBanMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         # Only intercept /api/nwnl/* routes
-        if not request.url.path.startswith("/api/nwnl"):
+        if not request.url.path.startswith("/nwnl"):
             return await call_next(request)
 
         # Refresh ban list periodically
