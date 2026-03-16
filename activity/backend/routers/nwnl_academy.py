@@ -9,7 +9,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
 
-import pytz
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Request, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
@@ -19,7 +19,7 @@ from nwnl_deps import get_current_user, get_user_lock
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-TZ = pytz.timezone("Asia/Bangkok")
+TZ = ZoneInfo("Asia/Bangkok")
 
 # ─── Request / Response Models ────────────────────────────────────────
 
