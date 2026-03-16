@@ -77,7 +77,7 @@ export const nwnlAcademyApi = {
     rename: (name: string) => api.post('/nwnl/academy/rename', { name }),
     reset: (confirmation: string) => api.post('/nwnl/academy/reset', { confirmation }),
     deleteAccount: (confirmation: string) => api.delete('/nwnl/academy/delete', { data: { confirmation } }),
-    searchCollection: (params: { anime_id?: number; genre?: string; archetype?: string; element?: string; page?: number; page_size?: number }) =>
+    searchCollection: (params: { name?: string; series?: string; genre?: string; archetype?: string; element?: string; page?: number; page_size?: number }) =>
         api.get('/nwnl/academy/search', { params }),
 }
 

@@ -289,14 +289,15 @@ async def delete_account(
 async def collection_search(
     request: Request,
     user_id: str = Depends(get_current_user),
-    anime_id: Optional[int] = None,
+    name: Optional[str] = None,
+    series: Optional[str] = None,
     genre: Optional[str] = None,
     archetype: Optional[str] = None,
     element: Optional[str] = None,
     page: int = 1,
     page_size: int = 20,
 ):
-    """Search/filter user's waifu collection. Paginated."""
+    """Search/filter user's waifu collection by name, series, genre, archetype, element. Paginated."""
     db = _get_db(request)
 
     collection = await db.get_user_collection_with_stars(user_id)
@@ -305,10 +306,18 @@ async def collection_search(
 
     filtered = collection
 
-    if anime_id is not None:
-        filtered = [w for w in filtered if w.get("series_id") == anime_id]
+    # Text search — character name (case-insensitive substring)
+    if name:
+        name_lower = name.lower()
+        filtered = [w for w in filtered if name_lower in (w.get("name") or "").lower()]
 
-    if genre is not None:
+    # Text search — series name (case-insensitive substring)
+    if series:
+        series_lower = series.lower()
+        filtered = [w for w in filtered if series_lower in (w.get("series") or "").lower()]
+
+    # Filter by genre
+    if genre:
         genre_lower = genre.lower()
         series_ids = {int(w["series_id"]) for w in filtered if isinstance(w.get("series_id"), int)}
         genre_map: Dict[int, List[str]] = {}
@@ -324,14 +333,16 @@ async def collection_search(
             and genre_lower in genre_map.get(w["series_id"], [])
         ]
 
-    if archetype is not None:
+    # Filter by archetype
+    if archetype:
         filtered = [
             w for w in filtered
             if isinstance(w.get("archetype"), str)
             and archetype.lower() in w["archetype"].lower()
         ]
 
-    if element is not None:
+    # Filter by element
+    if element:
         def _match(w):
             et = w.get("elemental_type")
             if isinstance(et, str):
@@ -341,7 +352,7 @@ async def collection_search(
             return False
         filtered = [w for w in filtered if _match(w)]
 
-    # Sort: stats power desc → star level desc → shards desc → name asc
+    # Sort: stats power desc → star level desc → name asc
     def _raw_stats(w):
         stats = w.get("stats")
         star = w.get("current_star_level", w.get("rarity", 1))
@@ -396,3 +407,4 @@ async def collection_search(
         "page": page,
         "page_count": page_count,
     }
+
