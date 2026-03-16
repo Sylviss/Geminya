@@ -26,7 +26,8 @@ interface SearchState {
 }
 
 export default function CollectionSearch() {
-    const [query, setQuery] = useState('')
+    const [nameQuery, setNameQuery] = useState('')
+    const [seriesQuery, setSeriesQuery] = useState('')
     const [data, setData] = useState<SearchState>({ results: [], total: 0, page: 1, page_count: 1 })
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -35,18 +36,16 @@ export default function CollectionSearch() {
 
     // Load full collection on mount
     useEffect(() => {
-        search('', 1)
+        search('', '', 1)
     }, [])
 
-    const search = async (q: string, page = 1) => {
+    const search = async (nameQ: string, seriesQ: string, page = 1) => {
         setLoading(true)
         setError(null)
         try {
             const params: Record<string, any> = { page, page_size: 12 }
-            // Search across both name and series with the same query
-            if (q.trim()) {
-                params.name = q.trim()
-            }
+            if (nameQ.trim()) params.name = nameQ.trim()
+            if (seriesQ.trim()) params.series = seriesQ.trim()
 
             const { data: res } = await nwnlAcademyApi.searchCollection(params)
             setData(res)
@@ -59,12 +58,19 @@ export default function CollectionSearch() {
         }
     }
 
-    // Debounced search on query change
-    const handleQueryChange = (value: string) => {
-        setQuery(value)
+    const handleNameChange = (value: string) => {
+        setNameQuery(value)
         if (debounceRef.current) clearTimeout(debounceRef.current)
         debounceRef.current = setTimeout(() => {
-            search(value, 1)
+            search(value, seriesQuery, 1)
+        }, 400)
+    }
+
+    const handleSeriesChange = (value: string) => {
+        setSeriesQuery(value)
+        if (debounceRef.current) clearTimeout(debounceRef.current)
+        debounceRef.current = setTimeout(() => {
+            search(nameQuery, value, 1)
         }, 400)
     }
 
@@ -80,15 +86,26 @@ export default function CollectionSearch() {
                 )}
             </h3>
 
-            {/* Search input */}
-            <div className="relative mb-4">
-                <input
-                    className="input text-sm w-full pl-9"
-                    placeholder="Search by name..."
-                    value={query}
-                    onChange={e => handleQueryChange(e.target.value)}
-                />
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">🔎</span>
+            {/* Search inputs */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <div className="relative">
+                    <input
+                        className="input text-sm w-full pl-9"
+                        placeholder="Search by character name..."
+                        value={nameQuery}
+                        onChange={e => handleNameChange(e.target.value)}
+                    />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">👤</span>
+                </div>
+                <div className="relative">
+                    <input
+                        className="input text-sm w-full pl-9"
+                        placeholder="Search by series name..."
+                        value={seriesQuery}
+                        onChange={e => handleSeriesChange(e.target.value)}
+                    />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">📺</span>
+                </div>
             </div>
 
             {/* Error display */}
@@ -133,7 +150,7 @@ export default function CollectionSearch() {
                     {data.page_count > 1 && (
                         <div className="flex items-center justify-center gap-2 mt-3">
                             <button
-                                onClick={() => search(query, data.page - 1)}
+                                onClick={() => search(nameQuery, seriesQuery, data.page - 1)}
                                 disabled={data.page <= 1}
                                 className="btn text-xs px-3 py-1 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
                             >
@@ -141,7 +158,7 @@ export default function CollectionSearch() {
                             </button>
                             <span className="text-xs text-white/50">{data.page}/{data.page_count}</span>
                             <button
-                                onClick={() => search(query, data.page + 1)}
+                                onClick={() => search(nameQuery, seriesQuery, data.page + 1)}
                                 disabled={data.page >= data.page_count}
                                 className="btn text-xs px-3 py-1 bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed"
                             >
@@ -152,7 +169,7 @@ export default function CollectionSearch() {
                 </>
             ) : searched ? (
                 <p className="text-center text-white/40 text-sm py-6">
-                    {query ? `No results for "${query}"` : 'Your collection is empty'}
+                    {(nameQuery || seriesQuery) ? `No results for your search filters` : 'Your collection is empty'}
                 </p>
             ) : null}
         </div>
