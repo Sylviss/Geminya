@@ -1,3 +1,5 @@
+import { proxyMediaUrl } from '../../utils/mediaProxy'
+
 interface CharacterCardProps {
     name: string
     series: string
@@ -43,7 +45,7 @@ export default function CharacterCard({
             >
                 {imageUrl && (
                     <img
-                        src={imageUrl}
+                        src={proxyMediaUrl(imageUrl)}
                         alt={name}
                         className="w-full aspect-[3/4] object-cover object-top"
                         loading="lazy"
@@ -84,7 +86,7 @@ export default function CharacterCard({
             {/* Image */}
             {imageUrl ? (
                 <img
-                    src={imageUrl}
+                    src={proxyMediaUrl(imageUrl)}
                     alt={name}
                     className="w-full h-36 object-cover object-top rounded-lg"
                     loading="lazy"

@@ -95,6 +95,63 @@ class NwnlWaifuService:
                 })
         return result
 
+    async def get_banner_rates(self, banner_id: int) -> Dict[str, Any]:
+        """Return computed rate breakdown for a banner."""
+        banner = await self.db.get_banner(banner_id)
+        if not banner:
+            return {}
+
+        banner_type = banner.get("type", "standard")
+        items = await self.db.get_banner_items(banner_id)
+        rate_up_ids = {i["item_id"] for i in items if i.get("rate_up")}
+
+        # Base rates per rarity tier
+        if banner_type == "premium":
+            base_rates = {3: 5.0, 2: 95.0, 1: 0.0}
+        else:
+            base_rates = dict(GACHA_RATES)  # {3: 5.0, 2: 20.0, 1: 75.0}
+
+        rate_up_characters: List[Dict[str, Any]] = []
+        featured_rate_per_char: Optional[float] = None
+        standard_rate_per_char: Optional[float] = None
+
+        if banner_type == "rate-up" and rate_up_ids:
+            # Compute per-character rates within the 3★ tier
+            pool_3 = [w for w in self._waifu_list if w.get("rarity") == 3]
+            n_rate_up = sum(1 for w in pool_3 if w["waifu_id"] in rate_up_ids)
+            n_normal = len(pool_3) - n_rate_up
+
+            if n_rate_up > 0 and n_normal > 0:
+                w_rate_up = n_normal / RATE_UP_DIVISOR
+                w_normal = n_rate_up * RATE_UP_MULTIPLIER
+                total_weight = n_rate_up * w_rate_up + n_normal * w_normal
+                frac_rate_up = (w_rate_up / total_weight) if total_weight > 0 else 0.0
+                frac_normal = (w_normal / total_weight) if total_weight > 0 else 0.0
+                featured_rate_per_char = round(base_rates[3] * frac_rate_up, 3)
+                standard_rate_per_char = round(base_rates[3] * frac_normal, 4)
+            elif n_rate_up > 0:
+                featured_rate_per_char = round(base_rates[3] / n_rate_up, 3)
+                standard_rate_per_char = None
+            else:
+                standard_rate_per_char = round(base_rates[3] / max(len(pool_3), 1), 4)
+
+            rate_up_characters = [
+                {**w, "is_rate_up": True}
+                for w in self._waifu_list
+                if w["waifu_id"] in rate_up_ids
+            ]
+
+        return {
+            "banner_id": banner_id,
+            "banner_name": banner.get("name", ""),
+            "banner_type": banner_type,
+            "base_rates": base_rates,
+            "pity_at": PITY_3_STAR,
+            "rate_up_characters": rate_up_characters,
+            "featured_rate_per_char": featured_rate_per_char,
+            "standard_rate_per_3star": standard_rate_per_char,
+        }
+
     async def perform_summon(
         self, discord_id: str, banner_id: Optional[int] = None
     ) -> Dict[str, Any]:
@@ -169,6 +226,7 @@ class NwnlWaifuService:
             "cost": cost,
             "currency_remaining": currency_remaining,
             "crystals_remaining": updated.get("sakura_crystals", 0),
+            "quartzs_remaining": updated.get("quartzs", 0),
             "daphine_gained": daphine_gained,
             **summon_result,
         }
@@ -214,6 +272,11 @@ class NwnlWaifuService:
                 available = [w for w in self._waifu_list if w.get("rarity") == rarity]
                 weights = [1] * len(available)
             if not available:
+                # Last-resort fallback: pick any waifu of any rarity
+                available = list(self._waifu_list)
+                weights = [1] * len(available)
+            # Skip only if absolutely no waifus exist in the database at all
+            if not available:
                 continue
 
             selected = random.choices(available, weights=weights, k=1)[0]
@@ -236,6 +299,21 @@ class NwnlWaifuService:
                 **summon_result,
             })
 
+        # 2★ guarantee: if no 2★+ pulled in 10 pulls, upgrade a random 1★ result to 2★
+        has_two_star_plus = any(r["rarity"] >= 2 for r in results)
+        if not has_two_star_plus and results:
+            one_star_indices = [i for i, r in enumerate(results) if r["rarity"] == 1]
+            if one_star_indices:
+                upgrade_idx = random.choice(one_star_indices)
+                upgraded = dict(results[upgrade_idx])
+                upgraded["rarity"] = 2
+                upgraded["current_star_level"] = 2
+                wid = upgraded["waifu"]["waifu_id"]
+                await self.db.update_character_star_and_shards(
+                    discord_id, wid, 2, upgraded.get("total_shards", 0)
+                )
+                results[upgrade_idx] = upgraded
+
         await self._deduct_currency(discord_id, currency_type, total_cost)
 
         updated = await self.db.get_or_create_user(discord_id)
@@ -249,6 +327,7 @@ class NwnlWaifuService:
             "total_cost": total_cost,
             "currency_remaining": currency_remaining,
             "crystals_remaining": updated.get("sakura_crystals", 0),
+            "quartzs_remaining": updated.get("quartzs", 0),
             "daphine_gained": total_daphine,
         }
 
