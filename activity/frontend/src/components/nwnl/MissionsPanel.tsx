@@ -13,7 +13,7 @@ interface Mission {
     reward_amount: number
 }
 
-export default function MissionsPanel() {
+export default function MissionsPanel({ onMissionClaimed }: { onMissionClaimed?: () => void }) {
     const [missions, setMissions] = useState<Mission[]>([])
     const [loading, setLoading] = useState(true)
     const [claimingId, setClaimingId] = useState<number | null>(null)
@@ -38,6 +38,7 @@ export default function MissionsPanel() {
             setMissions(prev =>
                 prev.map(m => m.id === missionId ? { ...m, claimed: true } : m)
             )
+            onMissionClaimed?.()
         } catch (err) {
             console.error('Failed to claim mission:', err)
         } finally {

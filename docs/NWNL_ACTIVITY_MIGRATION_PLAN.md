@@ -79,14 +79,14 @@ Each cog follows the same loop:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/nwnl/academy/status` | GET | Rank, currencies, star distribution, rank progress |
-| `/api/nwnl/academy/daily` | POST | Claim 500 crystals (UTC+7 daily reset) |
-| `/api/nwnl/academy/missions` | GET | Daily missions + progress |
-| `/api/nwnl/academy/missions/{id}/claim` | POST | Claim mission reward |
-| `/api/nwnl/academy/rename` | POST | Rename academy |
-| `/api/nwnl/academy/reset` | POST | Reset account |
-| `/api/nwnl/academy/delete` | DELETE | Delete account permanently |
-| `/api/nwnl/academy/search` | GET | Filtered collection search with stats |
+| `/nwnl/academy/status` | GET | Rank, currencies, star distribution, rank progress |
+| `/nwnl/academy/daily` | POST | Claim 500 crystals (UTC+7 daily reset) |
+| `/nwnl/academy/missions` | GET | Daily missions + progress |
+| `/nwnl/academy/missions/{id}/claim` | POST | Claim mission reward |
+| `/nwnl/academy/rename` | POST | Rename academy |
+| `/nwnl/academy/reset` | POST | Reset account |
+| `/nwnl/academy/delete` | DELETE | Delete account permanently |
+| `/nwnl/academy/search` | GET | Filtered collection search with stats |
 
 #### Frontend
 

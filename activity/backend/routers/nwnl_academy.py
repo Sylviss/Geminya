@@ -75,6 +75,7 @@ async def academy_status(
         "daphine": user.get("daphine", 0),
         "pity_counter": user.get("pity_counter", 0),
         "guaranteed_3star_in": max(0, 50 - user.get("pity_counter", 0)),
+        "last_daily_reset": user.get("last_daily_reset", 0),
         "total_waifus": stats["total_waifus"],
         "unique_waifus": stats["unique_waifus"],
         "collection_power": power,

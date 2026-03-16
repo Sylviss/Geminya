@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { nwnlAcademyApi } from '../api/client'
 import CurrencyDisplay from '../components/nwnl/CurrencyDisplay'
 import DailyClaimButton from '../components/nwnl/DailyClaimButton'
@@ -16,6 +16,7 @@ interface AcademyStatus {
     total_waifus: number
     unique_waifus: number
     collection_power: number
+    last_daily_reset: number
     rarity_distribution: Record<string, number>
     rank_progress: {
         power: number
@@ -33,18 +34,24 @@ export default function Academy() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    useEffect(() => { loadStatus() }, [])
-
-    const loadStatus = async () => {
+    const loadStatus = useCallback(async () => {
         try {
             const { data } = await nwnlAcademyApi.status()
             setStatus(data)
+            setError(null)
         } catch (err: any) {
             setError(err?.response?.data?.detail || 'Failed to load academy status')
         } finally {
             setLoading(false)
         }
-    }
+    }, [])
+
+    useEffect(() => { loadStatus() }, [loadStatus])
+
+    // Called by child components after mutations (daily claim, mission claim, etc)
+    const refreshStatus = useCallback(() => {
+        loadStatus()
+    }, [loadStatus])
 
     if (loading) {
         return (
@@ -98,7 +105,10 @@ export default function Academy() {
 
             {/* Daily + Rank Progress Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <DailyClaimButton />
+                <DailyClaimButton
+                    lastDailyReset={status.last_daily_reset}
+                    onClaimed={refreshStatus}
+                />
                 <div className="card p-4">
                     <h3 className="text-sm font-semibold text-white/70 mb-2">📈 Rank Progress → Rank {status.collector_rank + 1}</h3>
                     <div className="space-y-2">
@@ -127,7 +137,7 @@ export default function Academy() {
             )}
 
             {/* Missions */}
-            <MissionsPanel />
+            <MissionsPanel onMissionClaimed={refreshStatus} />
 
             {/* Collection Search */}
             <CollectionSearch />

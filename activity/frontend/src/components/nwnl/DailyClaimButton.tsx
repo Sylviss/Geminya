@@ -1,8 +1,31 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { nwnlAcademyApi } from '../../api/client'
 
-export default function DailyClaimButton() {
-    const [state, setState] = useState<'loading' | 'available' | 'claimed' | 'cooldown'>('loading')
+interface DailyClaimButtonProps {
+    /** last_daily_reset timestamp from the user's status, used to determine initial state */
+    lastDailyReset: number
+    /** Called after a successful claim so the parent can refresh */
+    onClaimed?: () => void
+}
+
+const UTC7_OFFSET = 7 * 3600 // seconds
+
+function getSecondsUntilNextReset(lastResetTs: number): number {
+    const nowSec = Math.floor(Date.now() / 1000)
+    if (lastResetTs <= 0) return 0
+
+    // Convert last reset to UTC+7 day boundary
+    const lastResetUtc7 = lastResetTs + UTC7_OFFSET
+    const dayStartUtc7 = lastResetUtc7 - (lastResetUtc7 % 86400)
+    const nextResetUtc7 = dayStartUtc7 + 86400
+    const nextResetUtc = nextResetUtc7 - UTC7_OFFSET
+
+    const diff = nextResetUtc - nowSec
+    return diff > 0 ? diff : 0
+}
+
+export default function DailyClaimButton({ lastDailyReset, onClaimed }: DailyClaimButtonProps) {
+    const [state, setState] = useState<'available' | 'claiming' | 'claimed' | 'cooldown'>('cooldown')
     const [secondsLeft, setSecondsLeft] = useState(0)
     const [earned, setEarned] = useState(0)
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -10,37 +33,26 @@ export default function DailyClaimButton() {
     const formatTime = (s: number) => {
         const h = Math.floor(s / 3600)
         const m = Math.floor((s % 3600) / 60)
-        return `${h}h ${m}m`
+        const sec = s % 60
+        if (h > 0) return `${h}h ${m}m`
+        return `${m}m ${sec}s`
     }
 
-    const handleClaim = async () => {
-        try {
-            const { data } = await nwnlAcademyApi.claimDaily()
-            if (data.claimed) {
-                setState('claimed')
-                setEarned(data.crystals_earned)
-                setTimeout(() => {
-                    setState('cooldown')
-                    setSecondsLeft(24 * 3600)
-                }, 3000)
-            } else {
-                setState('cooldown')
-                setSecondsLeft(data.seconds_left)
-            }
-        } catch {
+    // Determine initial state from the lastDailyReset prop
+    useEffect(() => {
+        const remaining = getSecondsUntilNextReset(lastDailyReset)
+        if (remaining > 0) {
             setState('cooldown')
+            setSecondsLeft(remaining)
+        } else {
+            setState('available')
         }
-    }
+    }, [lastDailyReset])
 
+    // Countdown timer
     useEffect(() => {
-        // Mark as available on mount — actual claim check is server-side
-        setState('available')
-        return () => {
-            if (timerRef.current) clearInterval(timerRef.current)
-        }
-    }, [])
+        if (timerRef.current) clearInterval(timerRef.current)
 
-    useEffect(() => {
         if (state === 'cooldown' && secondsLeft > 0) {
             timerRef.current = setInterval(() => {
                 setSecondsLeft(prev => {
@@ -51,14 +63,51 @@ export default function DailyClaimButton() {
                     return prev - 1
                 })
             }, 1000)
-            return () => { if (timerRef.current) clearInterval(timerRef.current) }
         }
-    }, [state, secondsLeft])
 
-    if (state === 'loading') {
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current)
+        }
+    }, [state, secondsLeft > 0])
+
+    const handleClaim = useCallback(async () => {
+        if (state !== 'available') return
+        setState('claiming')
+
+        try {
+            const { data } = await nwnlAcademyApi.claimDaily()
+            if (data.claimed) {
+                setState('claimed')
+                setEarned(data.crystals_earned)
+                // After a brief celebration, switch to cooldown with real time
+                setTimeout(() => {
+                    // Re-calculate from "now" since we just claimed
+                    const nowSec = Math.floor(Date.now() / 1000)
+                    const remaining = getSecondsUntilNextReset(nowSec)
+                    setState('cooldown')
+                    setSecondsLeft(remaining)
+                    onClaimed?.()
+                }, 2500)
+            } else {
+                // Server says already claimed
+                setState('cooldown')
+                setSecondsLeft(data.seconds_left || 0)
+            }
+        } catch {
+            // On error, try to show cooldown
+            setState('cooldown')
+            const remaining = getSecondsUntilNextReset(Math.floor(Date.now() / 1000))
+            setSecondsLeft(remaining > 0 ? remaining : 3600)
+        }
+    }, [state, onClaimed])
+
+    if (state === 'claiming') {
         return (
-            <div className="card p-4 animate-pulse">
-                <div className="h-12 bg-white/10 rounded-lg" />
+            <div className="card p-4 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border-amber-500/30">
+                <div className="flex items-center gap-3">
+                    <div className="spinner" />
+                    <p className="font-semibold text-amber-200">Claiming...</p>
+                </div>
             </div>
         )
     }
@@ -97,6 +146,7 @@ export default function DailyClaimButton() {
         )
     }
 
+    // state === 'available'
     return (
         <button
             onClick={handleClaim}
