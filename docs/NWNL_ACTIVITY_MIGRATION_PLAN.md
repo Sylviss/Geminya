@@ -86,7 +86,7 @@ Each cog follows the same loop:
 | `/nwnl/academy/rename` | POST | Rename academy |
 | `/nwnl/academy/reset` | POST | Reset account |
 | `/nwnl/academy/delete` | DELETE | Delete account permanently |
-| `/nwnl/academy/search` | GET | Filtered collection search with stats |
+| `/nwnl/academy/search` | GET | Filtered collection search with stats *(Note: will move to Phase 2C collection router later)* |
 
 #### Frontend
 
@@ -95,7 +95,7 @@ Each cog follows the same loop:
 | `pages/Academy.tsx` | Rank badge, crystal/quartzs/daphine display, star distribution chart |
 | Daily claim button | With countdown timer to next UTC+7 reset |
 | Missions panel | Progress bars + claim buttons per mission |
-| Collection search | Filter by name/element/archetype, paginated results with stat cards |
+| Collection search | Filter by name/series/element/archetype, paginated results *(Note: will move to Phase 2C collection page later)* |
 
 **Delete:** `cogs/commands/waifu_academy.py`
 
@@ -109,12 +109,12 @@ Each cog follows the same loop:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/nwnl/banners` | GET | List active banners |
-| `/api/nwnl/banners/{id}` | GET | Banner details |
-| `/api/nwnl/banners/{id}/pool` | GET | Banner character pool |
-| `/api/nwnl/summon` | POST | Single pull (banner_id optional) |
-| `/api/nwnl/summon/multi` | POST | 10x pull |
-| `/api/nwnl/awaken/{waifu_id}` | POST | Awaken character (costs 1 Daphine) |
+| `/nwnl/banners` | GET | List active banners |
+| `/nwnl/banners/{id}` | GET | Banner details |
+| `/nwnl/banners/{id}/pool` | GET | Banner character pool |
+| `/nwnl/summon` | POST | Single pull (banner_id optional) |
+| `/nwnl/summon/multi` | POST | 10x pull |
+| `/nwnl/awaken/{waifu_id}` | POST | Awaken character (costs 1 Daphine) |
 
 #### Frontend
 
@@ -138,11 +138,12 @@ Each cog follows the same loop:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/nwnl/collection` | GET | User's collection (paginated, filterable) |
-| `/api/nwnl/collection/{waifu_id}` | GET | Character profile detail |
-| `/api/nwnl/database` | GET | Browse all series (paginated) |
-| `/api/nwnl/database/series/{id}` | GET | Series detail + characters |
-| `/api/nwnl/database/search` | GET | Search characters/series by name |
+| `/nwnl/collection` | GET | User's collection (paginated, filterable) |
+| `/nwnl/collection/search` | GET | Search/filter user's waifu collection by name, series, genre, archetype, element *(from Phase 2A)* |
+| `/nwnl/collection/{waifu_id}` | GET | Character profile detail |
+| `/nwnl/database` | GET | Browse all series (paginated) |
+| `/nwnl/database/series/{id}` | GET | Series detail + characters |
+| `/nwnl/database/search` | GET | Search characters/series by name |
 
 #### Frontend
 
@@ -165,11 +166,11 @@ Each cog follows the same loop:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/nwnl/shop` | GET | Shop catalog (paginated, categorized) |
-| `/api/nwnl/shop/buy` | POST | Purchase item (currency_type + quantity) |
-| `/api/nwnl/inventory` | GET | User's inventory |
-| `/api/nwnl/inventory/use/{item_id}` | POST | Use/consume item |
-| `/api/nwnl/shop/history` | GET | Purchase history |
+| `/nwnl/shop` | GET | Shop catalog (paginated, categorized) |
+| `/nwnl/shop/buy` | POST | Purchase item (currency_type + quantity) |
+| `/nwnl/inventory` | GET | User's inventory |
+| `/nwnl/inventory/use/{item_id}` | POST | Use/consume item |
+| `/nwnl/shop/history` | GET | Purchase history |
 
 #### Frontend
 
@@ -191,12 +192,12 @@ Each cog follows the same loop:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/nwnl/world-threat/status` | GET | Boss state + player status |
-| `/api/nwnl/world-threat/characters` | GET | User's available characters (curse-filtered) |
-| `/api/nwnl/world-threat/fight` | POST | Submit 6-char team, calculate points, grant rewards, evolve boss |
-| `/api/nwnl/world-threat/research` | POST | Perform research action |
-| `/api/nwnl/world-threat/rewards` | GET | All reward tier tables |
-| `/api/nwnl/world-threat/checkpoints` | GET | Player's personal + server checkpoint progress |
+| `/nwnl/world-threat/status` | GET | Boss state + player status |
+| `/nwnl/world-threat/characters` | GET | User's available characters (curse-filtered) |
+| `/nwnl/world-threat/fight` | POST | Submit 6-char team, calculate points, grant rewards, evolve boss |
+| `/nwnl/world-threat/research` | POST | Perform research action |
+| `/nwnl/world-threat/rewards` | GET | All reward tier tables |
+| `/nwnl/world-threat/checkpoints` | GET | Player's personal + server checkpoint progress |
 | `WS /ws/world-threat/{guild_id}` | WebSocket | Real-time boss state broadcast on fight/research |
 
 #### Frontend
@@ -222,18 +223,18 @@ Each cog follows the same loop:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/nwnl/expeditions/catalog` | GET | All expedition templates |
-| `/api/nwnl/expeditions/catalog/{id}` | GET | Expedition detail |
-| `/api/nwnl/expeditions/available` | GET | Expeditions user can start |
-| `/api/nwnl/expeditions/active` | GET | User's in-progress expeditions with time remaining |
-| `/api/nwnl/expeditions/start` | POST | Start expedition (expedition_id, participant_ids[], equipment_id?) |
-| `/api/nwnl/expeditions/{id}/complete` | POST | Complete + claim rewards |
-| `/api/nwnl/expeditions/{id}/results` | GET | Full results with encounter logs |
-| `/api/nwnl/equipment` | GET | User's equipment list |
-| `/api/nwnl/equipment/{id}` | GET | Equipment detail with subslots |
-| `/api/nwnl/equipment/{id}/subslot` | POST | Unlock subslot by consuming another equipment |
-| `/api/nwnl/equipment/{id}/subslot/last` | DELETE | Remove last subslot |
-| `/api/nwnl/equipment/{id}/subslot/all` | DELETE | Remove all subslots |
+| `/nwnl/expeditions/catalog` | GET | All expedition templates |
+| `/nwnl/expeditions/catalog/{id}` | GET | Expedition detail |
+| `/nwnl/expeditions/available` | GET | Expeditions user can start |
+| `/nwnl/expeditions/active` | GET | User's in-progress expeditions with time remaining |
+| `/nwnl/expeditions/start` | POST | Start expedition (expedition_id, participant_ids[], equipment_id?) |
+| `/nwnl/expeditions/{id}/complete` | POST | Complete + claim rewards |
+| `/nwnl/expeditions/{id}/results` | GET | Full results with encounter logs |
+| `/nwnl/equipment` | GET | User's equipment list |
+| `/nwnl/equipment/{id}` | GET | Equipment detail with subslots |
+| `/nwnl/equipment/{id}/subslot` | POST | Unlock subslot by consuming another equipment |
+| `/nwnl/equipment/{id}/subslot/last` | DELETE | Remove last subslot |
+| `/nwnl/equipment/{id}/subslot/all` | DELETE | Remove all subslots |
 
 #### Frontend
 
