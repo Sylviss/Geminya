@@ -108,3 +108,18 @@ async def get_banner_pool(
         "count": len(pool),
         "characters": pool,
     }
+
+
+@router.get("/{banner_id}/rates")
+async def get_banner_rates(
+    banner_id: int,
+    _user_id: str = Depends(get_current_user),
+    request: Request = None,
+):
+    """Get the computed rate breakdown for a banner, including featured character rates."""
+    svc = _get_waifu_service(request)
+    banner = await svc.get_banner(banner_id)
+    if not banner:
+        raise HTTPException(status_code=404, detail="Banner not found")
+    rates = await svc.get_banner_rates(banner_id)
+    return rates

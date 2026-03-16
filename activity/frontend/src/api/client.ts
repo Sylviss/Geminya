@@ -85,6 +85,7 @@ export const nwnlBannerApi = {
     list: () => api.get('/nwnl/banners'),
     get: (bannerId: number) => api.get(`/nwnl/banners/${bannerId}`),
     pool: (bannerId: number) => api.get(`/nwnl/banners/${bannerId}/pool`),
+    rates: (bannerId: number) => api.get(`/nwnl/banners/${bannerId}/rates`),
 }
 
 export const nwnlSummonApi = {
