@@ -65,6 +65,7 @@ async def lifespan(app: FastAPI):
     try:
         from nwnl_config import NwnlConfig
         from nwnl_services.database import NwnlDatabaseService
+        from nwnl_services.waifu import NwnlWaifuService
 
         nwnl_config = NwnlConfig(secrets)
         pg_conf = nwnl_config.get_postgres_config()
@@ -73,7 +74,11 @@ async def lifespan(app: FastAPI):
             nwnl_db = NwnlDatabaseService(pg_conf)
             await nwnl_db.initialize()
 
+            nwnl_waifu = NwnlWaifuService(nwnl_db)
+            await nwnl_waifu.initialize()
+
             app.state.nwnl_db = nwnl_db
+            app.state.nwnl_waifu = nwnl_waifu
             app.state.user_locks = {}
 
             nwnl_ready = True
@@ -81,11 +86,13 @@ async def lifespan(app: FastAPI):
         else:
             logger.warning("⚠️ PostgreSQL not configured — NWNL services disabled")
             app.state.nwnl_db = None
+            app.state.nwnl_waifu = None
             app.state.user_locks = {}
 
     except Exception as e:
         logger.error(f"❌ Failed to initialize NWNL services: {e}", exc_info=True)
         app.state.nwnl_db = None
+        app.state.nwnl_waifu = None
         app.state.user_locks = {}
 
     app.state.nwnl_ready = nwnl_ready
@@ -101,7 +108,6 @@ async def lifespan(app: FastAPI):
             logger.info("✅ NWNL services cleaned up")
         except Exception as e:
             logger.error(f"Error cleaning up NWNL services: {e}")
-
 
 
 app = FastAPI(
@@ -134,6 +140,14 @@ app.include_router(media_proxy.router, prefix="/media", tags=["media"])
 # NWNL Academy routes
 from routers.nwnl_academy import router as nwnl_academy_router
 app.include_router(nwnl_academy_router, prefix="/nwnl/academy", tags=["nwnl-academy"])
+
+# NWNL Banner routes
+from routers.nwnl_banner import router as nwnl_banner_router
+app.include_router(nwnl_banner_router, prefix="/nwnl/banners", tags=["nwnl-banners"])
+
+# NWNL Summon routes
+from routers.nwnl_summon import router as nwnl_summon_router
+app.include_router(nwnl_summon_router, prefix="/nwnl/summon", tags=["nwnl-summon"])
 
 
 class TokenRequest(BaseModel):

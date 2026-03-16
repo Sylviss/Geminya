@@ -78,6 +78,26 @@ export default function Sidebar() {
                     <span className="text-lg">🏫</span>
                     <span className="font-medium text-xs">Academy</span>
                 </Link>
+                <Link
+                    to="/banners"
+                    className={`w-full h-10 rounded-xl flex items-center gap-2 px-2 transition-all ${location.pathname === '/banners'
+                        ? 'bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg'
+                        : 'hover:bg-white/10'
+                        }`}
+                >
+                    <span className="text-lg">🎴</span>
+                    <span className="font-medium text-xs">Banners</span>
+                </Link>
+                <Link
+                    to="/summon"
+                    className={`w-full h-10 rounded-xl flex items-center gap-2 px-2 transition-all ${location.pathname === '/summon'
+                        ? 'bg-gradient-to-br from-yellow-500 to-amber-500 shadow-lg'
+                        : 'hover:bg-white/10'
+                        }`}
+                >
+                    <span className="text-lg">✨</span>
+                    <span className="font-medium text-xs">Summon</span>
+                </Link>
             </div>
 
             {/* Discord User (if available) */}

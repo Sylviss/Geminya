@@ -81,5 +81,17 @@ export const nwnlAcademyApi = {
         api.get('/nwnl/academy/search', { params }),
 }
 
+export const nwnlBannerApi = {
+    list: () => api.get('/nwnl/banners'),
+    get: (bannerId: number) => api.get(`/nwnl/banners/${bannerId}`),
+    pool: (bannerId: number) => api.get(`/nwnl/banners/${bannerId}/pool`),
+}
+
+export const nwnlSummonApi = {
+    single: (bannerId?: number) => api.post('/nwnl/summon', { banner_id: bannerId ?? null }),
+    multi: (bannerId?: number) => api.post('/nwnl/summon/multi', { banner_id: bannerId ?? null }),
+    awaken: (waifuId: number) => api.post(`/nwnl/summon/awaken/${waifuId}`),
+}
+
 export default api
 
