@@ -228,6 +228,7 @@ class NwnlWaifuService:
             "crystals_remaining": updated.get("sakura_crystals", 0),
             "quartzs_remaining": updated.get("quartzs", 0),
             "daphine_gained": daphine_gained,
+            "pity_counter": updated.get("pity_counter", 0),
             **summon_result,
         }
 
@@ -329,6 +330,7 @@ class NwnlWaifuService:
             "crystals_remaining": updated.get("sakura_crystals", 0),
             "quartzs_remaining": updated.get("quartzs", 0),
             "daphine_gained": total_daphine,
+            "pity_counter": updated.get("pity_counter", 0),
         }
 
     # ─── Private Helpers ──────────────────────────────────────────────

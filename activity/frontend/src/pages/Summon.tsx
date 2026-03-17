@@ -39,6 +39,7 @@ interface SingleResult {
     crystals_remaining: number
     quartzs_remaining: number
     daphine_gained: number
+    pity_counter: number
 }
 
 interface MultiResult {
@@ -50,6 +51,7 @@ interface MultiResult {
     crystals_remaining: number
     quartzs_remaining: number
     daphine_gained: number
+    pity_counter: number
 }
 
 interface BannerRates {
@@ -287,6 +289,8 @@ export default function Summon() {
         if (data.currency_type === 'daphine') setDaphine(data.currency_remaining ?? 0)
         const dGained = 'daphine_gained' in data ? data.daphine_gained : 0
         if (dGained) setDaphine(prev => prev + dGained)
+        // Update pity counter from response
+        if (data.pity_counter != null) setPityCounter(data.pity_counter)
     }
 
     const handleSingle = async () => {
