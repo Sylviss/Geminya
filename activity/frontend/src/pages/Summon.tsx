@@ -87,7 +87,7 @@ const BANNER_TYPE_LABEL: Record<string, string> = {
 
 const BANNER_TYPE_EXPLANATION: Record<string, string> = {
     'rate-up': 'Rate-Up banners feature increased rates for specific characters from featured series. These characters have higher drop rates within their rarity tier.',
-    limited: 'Limited banners contain exclusive characters that are only available during this banner period. Limited 2★ and 3★ characters cannot be obtained from standard pools.',
+    limited: 'Limited banners contain only a limited set of characters. You will never pull characters outside of the featured list, making it ideal for targeting specific waifus.',
     premium: 'Premium banners guarantee only 2★ and 3★ characters - no 1★ drops. Great for building your collection of higher rarity characters.',
     standard: 'Standard banners offer all characters with equal rates within each rarity tier. The most balanced option for general summoning.',
 }
