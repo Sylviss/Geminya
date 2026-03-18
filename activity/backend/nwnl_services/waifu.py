@@ -121,6 +121,10 @@ class NwnlWaifuService:
         rate_up_characters: List[Dict[str, Any]] = []
         featured_rate_per_char: Optional[float] = None
         standard_rate_per_char: Optional[float] = None
+        featured_2star_rate_per_char: Optional[float] = None
+        standard_2star_rate_per_char: Optional[float] = None
+        featured_1star_rate_per_char: Optional[float] = None
+        standard_1star_rate_per_char: Optional[float] = None
 
         if banner_type == "rate-up":
             # Also resolve series_ids from the banner to get all featured characters
@@ -160,6 +164,40 @@ class NwnlWaifuService:
             else:
                 standard_rate_per_char = round(base_rates[3] / max(len(pool_3), 1), 4)
 
+            # Compute per-character rates within the 2★ tier
+            pool_2 = [w for w in self._waifu_list if w.get("rarity") == 2]
+            n_rate_up_2 = sum(1 for w in pool_2 if w["waifu_id"] in featured_ids)
+            n_normal_2 = len(pool_2) - n_rate_up_2
+
+            if n_rate_up_2 > 0 and n_normal_2 > 0:
+                w_rate_up_2 = n_normal_2 / RATE_UP_DIVISOR
+                w_normal_2 = n_rate_up_2 * RATE_UP_MULTIPLIER
+                total_weight_2 = n_rate_up_2 * w_rate_up_2 + n_normal_2 * w_normal_2
+                frac_rate_up_2 = (w_rate_up_2 / total_weight_2) if total_weight_2 > 0 else 0.0
+                frac_normal_2 = (w_normal_2 / total_weight_2) if total_weight_2 > 0 else 0.0
+                featured_2star_rate_per_char = round(base_rates[2] * frac_rate_up_2, 3)
+                standard_2star_rate_per_char = round(base_rates[2] * frac_normal_2, 4)
+            elif n_rate_up_2 > 0:
+                featured_2star_rate_per_char = round(base_rates[2] / n_rate_up_2, 3)
+                standard_2star_rate_per_char = None
+
+            # Compute per-character rates within the 1★ tier
+            pool_1 = [w for w in self._waifu_list if w.get("rarity") == 1]
+            n_rate_up_1 = sum(1 for w in pool_1 if w["waifu_id"] in featured_ids)
+            n_normal_1 = len(pool_1) - n_rate_up_1
+
+            if n_rate_up_1 > 0 and n_normal_1 > 0:
+                w_rate_up_1 = n_normal_1 / RATE_UP_DIVISOR
+                w_normal_1 = n_rate_up_1 * RATE_UP_MULTIPLIER
+                total_weight_1 = n_rate_up_1 * w_rate_up_1 + n_normal_1 * w_normal_1
+                frac_rate_up_1 = (w_rate_up_1 / total_weight_1) if total_weight_1 > 0 else 0.0
+                frac_normal_1 = (w_normal_1 / total_weight_1) if total_weight_1 > 0 else 0.0
+                featured_1star_rate_per_char = round(base_rates[1] * frac_rate_up_1, 3)
+                standard_1star_rate_per_char = round(base_rates[1] * frac_normal_1, 4)
+            elif n_rate_up_1 > 0:
+                featured_1star_rate_per_char = round(base_rates[1] / n_rate_up_1, 3)
+                standard_1star_rate_per_char = None
+
             rate_up_characters = [
                 {**w, "is_rate_up": True}
                 for w in self._waifu_list
@@ -167,12 +205,53 @@ class NwnlWaifuService:
             ]
 
         elif banner_type == "limited":
-            # For limited banners, show all limited characters (from banner_items)
-            item_ids_set = set(item_ids)
+            # For limited banners, show all limited characters (from banner_items + series_ids)
+            import json as _json
+            series_ids_raw = banner.get("series_ids") or "[]"
+            if isinstance(series_ids_raw, str):
+                try:
+                    series_ids = _json.loads(series_ids_raw)
+                except Exception:
+                    series_ids = []
+            else:
+                series_ids = list(series_ids_raw)
+            series_id_set = {int(s) for s in series_ids if s}
+
+            # Combine item_ids from banner_items with all characters from series_ids
+            featured_ids = set(item_ids)
+            for w in self._waifu_list:
+                if w.get("series_id") in series_id_set:
+                    featured_ids.add(w["waifu_id"])
+
             rate_up_characters = [
                 {**w, "is_rate_up": False}
                 for w in self._waifu_list
-                if w["waifu_id"] in item_ids_set and w.get("rarity") in (2, 3)
+                if w["waifu_id"] in featured_ids
+            ]
+
+        elif banner_type == "premium":
+            # For premium banners, show all premium characters (from banner_items + series_ids)
+            import json as _json
+            series_ids_raw = banner.get("series_ids") or "[]"
+            if isinstance(series_ids_raw, str):
+                try:
+                    series_ids = _json.loads(series_ids_raw)
+                except Exception:
+                    series_ids = []
+            else:
+                series_ids = list(series_ids_raw)
+            series_id_set = {int(s) for s in series_ids if s}
+
+            # Combine item_ids from banner_items with all characters from series_ids
+            featured_ids = set(item_ids)
+            for w in self._waifu_list:
+                if w.get("series_id") in series_id_set:
+                    featured_ids.add(w["waifu_id"])
+
+            rate_up_characters = [
+                {**w, "is_rate_up": False}
+                for w in self._waifu_list
+                if w["waifu_id"] in featured_ids and w.get("rarity") in (2, 3)
             ]
 
         return {
@@ -184,6 +263,10 @@ class NwnlWaifuService:
             "rate_up_characters": rate_up_characters,
             "featured_rate_per_char": featured_rate_per_char,
             "standard_rate_per_3star": standard_rate_per_char,
+            "featured_2star_rate_per_char": featured_2star_rate_per_char,
+            "standard_2star_rate_per_char": standard_2star_rate_per_char,
+            "featured_1star_rate_per_char": featured_1star_rate_per_char,
+            "standard_1star_rate_per_char": standard_1star_rate_per_char,
         }
 
     async def perform_summon(

@@ -70,6 +70,10 @@ interface BannerRates {
     }>
     featured_rate_per_char: number | null
     standard_rate_per_3star: number | null
+    featured_2star_rate_per_char: number | null
+    standard_2star_rate_per_char: number | null
+    featured_1star_rate_per_char: number | null
+    standard_1star_rate_per_char: number | null
 }
 
 const CURRENCY_EMOJI: Record<string, string> = {
@@ -241,6 +245,26 @@ function BannerInfoModal({
                         {rates.standard_rate_per_3star != null && (
                             <p className="text-xs text-white/40">
                                 Other 3★ characters: ~{rates.standard_rate_per_3star}% per pull
+                            </p>
+                        )}
+                        {rates.featured_2star_rate_per_char != null && (
+                            <p className="text-xs text-blue-300">
+                                Each featured 2★ character: ~{rates.featured_2star_rate_per_char}% per pull
+                            </p>
+                        )}
+                        {rates.standard_2star_rate_per_char != null && (
+                            <p className="text-xs text-white/40">
+                                Other 2★ characters: ~{rates.standard_2star_rate_per_char}% per pull
+                            </p>
+                        )}
+                        {rates.featured_1star_rate_per_char != null && (
+                            <p className="text-xs text-gray-300">
+                                Each featured 1★ character: ~{rates.featured_1star_rate_per_char}% per pull
+                            </p>
+                        )}
+                        {rates.standard_1star_rate_per_char != null && (
+                            <p className="text-xs text-white/40">
+                                Other 1★ characters: ~{rates.standard_1star_rate_per_char}% per pull
                             </p>
                         )}
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
