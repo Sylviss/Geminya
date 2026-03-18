@@ -101,7 +101,7 @@ Each cog follows the same loop:
 
 ---
 
-### 2B — Banners + Summon + Awaken (5 days)
+### 2B — Banners + Summon (5 days)
 
 **Core gacha loop. High user impact. Summon animation is the big UX upgrade.**
 
@@ -114,7 +114,6 @@ Each cog follows the same loop:
 | `/nwnl/banners/{id}/pool` | GET | Banner character pool |
 | `/nwnl/summon` | POST | Single pull (banner_id optional) |
 | `/nwnl/summon/multi` | POST | 10x pull |
-| `/nwnl/awaken/{waifu_id}` | POST | Awaken character (costs 1 Daphine) |
 
 #### Frontend
 
@@ -123,14 +122,13 @@ Each cog follows the same loop:
 | `pages/Banners.tsx` | Banner cards with featured characters, cost, currency type |
 | `pages/Summon.tsx` | Pull button, CSS/Canvas gacha animation, rarity reveal effect |
 | `components/nwnl/SummonResults.tsx` | Multi-pull result grid with rarity highlights |
-| `components/nwnl/AwakenDialog.tsx` | Confirm/cancel modal showing Daphine cost |
 | `components/nwnl/CharacterCard.tsx` | **Reusable** — rarity border, star level, stats preview |
 
-**Delete:** `cogs/commands/waifu_summon.py`, `cogs/commands/waifu_awaken.py`, `cogs/commands/banner.py`
+**Delete:** `cogs/commands/waifu_summon.py`, `cogs/commands/banner.py` (Wait until Phase 2C to delete `waifu_awaken.py`)
 
 ---
 
-### 2C — Collection + Database Browser (3 days)
+### 2C — Collection + Database Browser + Awaken (3 days)
 
 **Read-only views, relatively simple, used constantly.**
 
@@ -144,6 +142,7 @@ Each cog follows the same loop:
 | `/nwnl/database` | GET | Browse all series (paginated) |
 | `/nwnl/database/series/{id}` | GET | Series detail + characters |
 | `/nwnl/database/search` | GET | Search characters/series by name |
+| `/nwnl/awaken/{waifu_id}` | POST | Awaken character (costs 1 Daphine) - *Moved from 2B* |
 
 #### Frontend
 
@@ -153,8 +152,9 @@ Each cog follows the same loop:
 | `pages/CharacterProfile.tsx` | Full card: stats radar chart, star progress, shard count, awakening status |
 | `pages/Database.tsx` | All series browser with search, click into series → character list |
 | `components/nwnl/StatsRadar.tsx` | **Reusable** 7-axis radar chart (atk/mag/vit/spr/int/spd/lck) |
+| `components/nwnl/AwakenDialog.tsx` | Confirm/cancel modal showing Daphine cost - *Moved from 2B* |
 
-**Delete:** Collection/database commands already gone with 2B (same cog file)
+**Delete:** Collection/database commands already gone with 2B (same cog file) + `cogs/commands/waifu_awaken.py`
 
 ---
 
@@ -276,7 +276,7 @@ These components are built once and shared across multiple pages:
 | `CurrencyDisplay.tsx` | Academy, Shop, Summon | crystals / quartzs / daphine |
 | `PaginationControls.tsx` | Every paginated view | — |
 | `RarityBadge.tsx` | CharacterCard | ★/★★/★★★ |
-| `ConfirmDialog.tsx` | Awaken, Research, Reset, Account delete | generic confirm/cancel modal |
+| `ConfirmDialog.tsx` | Research, Reset, Account delete (Awaken uses AwakenDialog) | generic confirm/cancel modal |
 
 ---
 
