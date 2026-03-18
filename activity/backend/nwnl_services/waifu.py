@@ -110,6 +110,7 @@ class NwnlWaifuService:
 
         banner_type = banner.get("type", "standard")
         items = await self.db.get_banner_items(banner_id)
+        item_ids = [i["item_id"] for i in items]
         rate_up_ids = {i["item_id"] for i in items if i.get("rate_up")}
 
         # Base rates per rarity tier
@@ -166,14 +167,23 @@ class NwnlWaifuService:
                 if w["waifu_id"] in featured_ids
             ]
 
-        elif banner_type == "limited":
-            # For limited banners, show all limited characters (from banner_items)
+        elif banner_type in ("limited", "premium"):
+            # For limited/premium banners, show all allowed characters in banner_items
             item_ids_set = set(item_ids)
+            
+            # Premium banners only allow 2★ and 3★
+            allowed_rarities = (2, 3) if banner_type == "premium" else (1, 2, 3)
+            
+            # Note: For limited menus, 1* waifus are typically NOT in banner_items 
+            # (cleared out by initialize_banners), but we'll filter by rarity just to be safe
             rate_up_characters = [
                 {**w, "is_rate_up": False}
                 for w in self._waifu_list
-                if w["waifu_id"] in item_ids_set and w.get("rarity") in (2, 3)
+                if w["waifu_id"] in item_ids_set and w.get("rarity") in allowed_rarities
             ]
+            
+            # Note: There's no featured_rate_per_char because all waifus in the pool have equal weight
+            # within their rarity tier on limited/premium banners.
 
         return {
             "banner_id": banner_id,

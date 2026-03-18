@@ -231,14 +231,14 @@ function BannerInfoModal({
                 ) : rates && rates.rate_up_characters.length > 0 ? (
                     <div className="space-y-2">
                         <p className="text-xs font-semibold text-white/60 uppercase tracking-wide">
-                            {banner.type === 'limited' ? '⏳ Limited Characters' : '📈 Featured / Rate-Up Characters'}
+                            {banner.type === 'limited' ? '⏳ Limited Pool Characters' : banner.type === 'premium' ? '💠 Premium Pool Characters' : '📈 Featured / Rate-Up Characters'}
                         </p>
-                        {rates.featured_rate_per_char != null && (
+                        {rates.featured_rate_per_char != null && banner.type === 'rate-up' && (
                             <p className="text-xs text-purple-300">
                                 Each featured 3★ character: ~{rates.featured_rate_per_char}% per pull
                             </p>
                         )}
-                        {rates.standard_rate_per_3star != null && (
+                        {rates.standard_rate_per_3star != null && banner.type === 'rate-up' && (
                             <p className="text-xs text-white/40">
                                 Other 3★ characters: ~{rates.standard_rate_per_3star}% per pull
                             </p>
@@ -262,11 +262,12 @@ function BannerInfoModal({
                                         </div>
                                     )}
                                     <div className="absolute bottom-0 left-0 right-0 bg-black/70 backdrop-blur-sm px-1.5 py-1">
-                                        <p className="text-[10px] font-bold text-white truncate">{char.name}</p>
-                                        <p className="text-[9px] text-white/50 truncate">{char.series}</p>
-                                        <p className="text-[9px] text-yellow-300">{'⭐'.repeat(char.rarity)}</p>
+                                        <p className="text-[10px] font-bold text-white truncate break-all group relative">
+                                            {char.name} <span className="text-yellow-300">{'★'.repeat(char.rarity)}</span>
+                                        </p>
+                                        <p className="text-[9px] text-white/50 truncate break-all">{char.series}</p>
                                     </div>
-                                    {banner.type !== 'limited' && (
+                                    {banner.type === 'rate-up' && char.is_rate_up && (
                                         <div className="absolute top-1 right-1 bg-yellow-500/90 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                                             UP
                                         </div>
