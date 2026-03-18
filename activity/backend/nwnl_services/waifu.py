@@ -51,7 +51,11 @@ class NwnlWaifuService:
         return await self.db.get_banner(banner_id)
 
     async def get_banner_pool(self, banner_id: int) -> List[Dict[str, Any]]:
-        """Return waifu records that belong to a banner (2★ and 3★ only for display)."""
+        """Return waifu records that belong to a banner (2★ and 3★ only for display).
+
+        Shows characters from banner_items (which already includes both waifu_ids and series_ids
+        combined during initialization).
+        """
         banner = await self.db.get_banner(banner_id)
         if not banner:
             return []
@@ -60,45 +64,17 @@ class NwnlWaifuService:
         rate_up_ids = {i["item_id"] for i in items if i.get("rate_up")}
 
         banner_type = banner.get("type", "standard")
-        import json as _json
-
-        series_ids_raw = banner.get("series_ids") or "[]"
-        if isinstance(series_ids_raw, str):
-            try:
-                series_ids = _json.loads(series_ids_raw)
-            except Exception:
-                series_ids = []
-        else:
-            series_ids = list(series_ids_raw)
-        series_id_set = {int(s) for s in series_ids if s}
-
-        # Combine rate_up_ids with all characters from rate-up series
-        featured_ids = set(rate_up_ids)
-        if banner_type == "rate-up" and series_id_set:
-            for w in self._waifu_list:
-                if w.get("series_id") in series_id_set:
-                    featured_ids.add(w["waifu_id"])
 
         result = []
         for w in self._waifu_list:
             rarity = w.get("rarity", 0)
             wid = w["waifu_id"]
-            in_pool = False
 
-            if banner_type == "rate-up":
-                # Pool = all waifus of rarity 2 or 3
-                in_pool = rarity in (2, 3)
-                if series_id_set:
-                    in_pool = in_pool and (w.get("series_id") in series_id_set)
-            elif banner_type == "premium":
-                in_pool = rarity in (2, 3) and wid in item_ids
-            else:
-                in_pool = rarity in (2, 3) and wid in item_ids
-
-            if in_pool:
+            # Only show 2★ and 3★ characters that are in banner_items
+            if rarity in (2, 3) and wid in item_ids:
                 result.append({
                     **w,
-                    "is_rate_up": wid in featured_ids,
+                    "is_rate_up": wid in rate_up_ids,
                 })
         return result
 
@@ -205,53 +181,23 @@ class NwnlWaifuService:
             ]
 
         elif banner_type == "limited":
-            # For limited banners, show all limited characters (from banner_items + series_ids)
-            import json as _json
-            series_ids_raw = banner.get("series_ids") or "[]"
-            if isinstance(series_ids_raw, str):
-                try:
-                    series_ids = _json.loads(series_ids_raw)
-                except Exception:
-                    series_ids = []
-            else:
-                series_ids = list(series_ids_raw)
-            series_id_set = {int(s) for s in series_ids if s}
-
-            # Combine item_ids from banner_items with all characters from series_ids
-            featured_ids = set(item_ids)
-            for w in self._waifu_list:
-                if w.get("series_id") in series_id_set:
-                    featured_ids.add(w["waifu_id"])
-
+            # For limited banners, show all limited characters from banner_items
+            # Note: banner_items already contains characters from both waifu_ids and series_ids (combined during initialization)
+            item_ids_set = set(item_ids)
             rate_up_characters = [
                 {**w, "is_rate_up": False}
                 for w in self._waifu_list
-                if w["waifu_id"] in featured_ids
+                if w["waifu_id"] in item_ids_set
             ]
 
         elif banner_type == "premium":
-            # For premium banners, show all premium characters (from banner_items + series_ids)
-            import json as _json
-            series_ids_raw = banner.get("series_ids") or "[]"
-            if isinstance(series_ids_raw, str):
-                try:
-                    series_ids = _json.loads(series_ids_raw)
-                except Exception:
-                    series_ids = []
-            else:
-                series_ids = list(series_ids_raw)
-            series_id_set = {int(s) for s in series_ids if s}
-
-            # Combine item_ids from banner_items with all characters from series_ids
-            featured_ids = set(item_ids)
-            for w in self._waifu_list:
-                if w.get("series_id") in series_id_set:
-                    featured_ids.add(w["waifu_id"])
-
+            # For premium banners, show all premium characters from banner_items (2★ and 3★ only)
+            # Note: banner_items already contains characters from both waifu_ids and series_ids (combined during initialization)
+            item_ids_set = set(item_ids)
             rate_up_characters = [
                 {**w, "is_rate_up": False}
                 for w in self._waifu_list
-                if w["waifu_id"] in featured_ids and w.get("rarity") in (2, 3)
+                if w["waifu_id"] in item_ids_set and w.get("rarity") in (2, 3)
             ]
 
         return {
