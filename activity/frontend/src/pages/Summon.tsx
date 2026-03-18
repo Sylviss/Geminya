@@ -85,6 +85,54 @@ const BANNER_TYPE_LABEL: Record<string, string> = {
     standard: '🎴 Standard',
 }
 
+const BANNER_TYPE_EXPLANATION: Record<string, string> = {
+    'rate-up': 'Rate-Up banners feature increased rates for specific characters from featured series. These characters have higher drop rates within their rarity tier.',
+    limited: 'Limited banners contain exclusive characters that are only available during this banner period. Limited 2★ and 3★ characters cannot be obtained from standard pools.',
+    premium: 'Premium banners guarantee only 2★ and 3★ characters - no 1★ drops. Great for building your collection of higher rarity characters.',
+    standard: 'Standard banners offer all characters with equal rates within each rarity tier. The most balanced option for general summoning.',
+}
+
+// ─── Banner Type Explanation Modal ────────────────────────────────
+
+function BannerTypeModal({
+    bannerType,
+    onClose,
+}: {
+    bannerType: string
+    onClose: () => void
+}) {
+    const label = BANNER_TYPE_LABEL[bannerType] ?? bannerType
+    const explanation = BANNER_TYPE_EXPLANATION[bannerType] ?? 'No explanation available.'
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={onClose}
+        >
+            <div
+                className="card max-w-md w-full p-5 space-y-4"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-bold gradient-text from-purple-400 to-pink-400">
+                        {label}
+                    </h2>
+                    <button
+                        onClick={onClose}
+                        className="text-white/40 hover:text-white text-xl leading-none"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <p className="text-sm text-white/70">{explanation}</p>
+
+                <button onClick={onClose} className="btn btn-primary w-full">Close</button>
+            </div>
+        </div>
+    )
+}
+
 // ─── Banner Info Modal ─────────────────────────────────────────────
 
 function BannerInfoModal({
@@ -183,7 +231,7 @@ function BannerInfoModal({
                 ) : rates && rates.rate_up_characters.length > 0 ? (
                     <div className="space-y-2">
                         <p className="text-xs font-semibold text-white/60 uppercase tracking-wide">
-                            📈 Featured / Rate-Up Characters
+                            {banner.type === 'limited' ? '⏳ Limited Characters' : '📈 Featured / Rate-Up Characters'}
                         </p>
                         {rates.featured_rate_per_char != null && (
                             <p className="text-xs text-purple-300">
@@ -218,9 +266,11 @@ function BannerInfoModal({
                                         <p className="text-[9px] text-white/50 truncate">{char.series}</p>
                                         <p className="text-[9px] text-yellow-300">{'⭐'.repeat(char.rarity)}</p>
                                     </div>
-                                    <div className="absolute top-1 right-1 bg-yellow-500/90 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                                        UP
-                                    </div>
+                                    {banner.type !== 'limited' && (
+                                        <div className="absolute top-1 right-1 bg-yellow-500/90 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                                            UP
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -258,6 +308,7 @@ export default function Summon() {
     const [multiResult, setMultiResult] = useState<MultiResult | null>(null)
     const [error, setError] = useState<string | null>(null)
     const [showBannerInfo, setShowBannerInfo] = useState(false)
+    const [showBannerTypeModal, setShowBannerTypeModal] = useState(false)
 
     // Load banners and user status
     const loadData = useCallback(async () => {
@@ -361,6 +412,14 @@ export default function Summon() {
 
     return (
         <>
+            {/* Banner Type Modal */}
+            {showBannerTypeModal && selectedBanner && (
+                <BannerTypeModal
+                    bannerType={selectedBanner.type}
+                    onClose={() => setShowBannerTypeModal(false)}
+                />
+            )}
+
             {/* Banner Info Modal */}
             {showBannerInfo && selectedBanner && (
                 <BannerInfoModal
@@ -386,12 +445,20 @@ export default function Summon() {
                         <span className="gradient-text from-purple-400 to-pink-400">✨ Summon</span>
                     </h1>
                     {selectedBanner && (
-                        <button
-                            onClick={() => setShowBannerInfo(true)}
-                            className="btn text-xs bg-white/10 hover:bg-white/20"
-                        >
-                            ℹ️ Banner Info
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowBannerTypeModal(true)}
+                                className="btn text-xs bg-white/10 hover:bg-white/20"
+                            >
+                                {BANNER_TYPE_LABEL[selectedBanner.type] ?? selectedBanner.type}
+                            </button>
+                            <button
+                                onClick={() => setShowBannerInfo(true)}
+                                className="btn text-xs bg-white/10 hover:bg-white/20"
+                            >
+                                ℹ️ Banner Info
+                            </button>
+                        </div>
                     )}
                 </div>
 
@@ -454,19 +521,22 @@ export default function Summon() {
                 {/* Single result */}
                 {lastSingle && !multiResult && (
                     <div className="card p-4">
-                        <div className="max-w-xs mx-auto">
-                            <CharacterCard
-                                name={lastSingle.waifu.name}
-                                series={lastSingle.waifu.series}
-                                rarity={lastSingle.rarity}
-                                currentStarLevel={lastSingle.current_star_level}
-                                imageUrl={lastSingle.waifu.image_url}
-                                isNew={lastSingle.is_new}
-                                isDuplicate={lastSingle.is_duplicate}
-                                shardsGained={lastSingle.shards_gained}
-                                quartzGained={lastSingle.quartz_gained}
-                                upgradesPerformed={lastSingle.upgrades_performed}
-                            />
+                        <div className="flex justify-center">
+                            <div className="w-40">
+                                <CharacterCard
+                                    name={lastSingle.waifu.name}
+                                    series={lastSingle.waifu.series}
+                                    rarity={lastSingle.rarity}
+                                    currentStarLevel={lastSingle.current_star_level}
+                                    imageUrl={lastSingle.waifu.image_url}
+                                    isNew={lastSingle.is_new}
+                                    isDuplicate={lastSingle.is_duplicate}
+                                    shardsGained={lastSingle.shards_gained}
+                                    quartzGained={lastSingle.quartz_gained}
+                                    upgradesPerformed={lastSingle.upgrades_performed}
+                                    compact
+                                />
+                            </div>
                         </div>
                         {lastSingle.daphine_gained > 0 && (
                             <p className="text-center text-sm text-amber-300 mt-2">+{lastSingle.daphine_gained} 🦋 Daphine bonus!</p>

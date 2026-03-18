@@ -16,9 +16,9 @@ interface CharacterCardProps {
 }
 
 const RARITY_STYLES: Record<number, { border: string; glow: string; bg: string; label: string }> = {
-    1: { border: 'border-gray-400/40', glow: '', bg: 'from-gray-500/10 to-gray-400/5', label: '1★' },
-    2: { border: 'border-blue-400/60', glow: 'shadow-blue-500/20', bg: 'from-blue-500/15 to-cyan-500/10', label: '2★' },
-    3: { border: 'border-yellow-400/80', glow: 'shadow-yellow-500/30', bg: 'from-yellow-500/20 to-amber-400/10', label: '3★' },
+    1: { border: 'border-[3px] border-gray-400/50', glow: '', bg: 'from-gray-500/10 to-gray-400/5', label: '1★' },
+    2: { border: 'border-[3px] border-blue-400/70', glow: 'shadow-blue-500/20', bg: 'from-blue-500/15 to-cyan-500/10', label: '2★' },
+    3: { border: 'border-[3px] border-yellow-400/90', glow: 'shadow-yellow-500/30', bg: 'from-yellow-500/20 to-amber-400/10', label: '3★' },
 }
 
 export default function CharacterCard({
@@ -41,7 +41,7 @@ export default function CharacterCard({
     if (compact) {
         return (
             <div
-                className={`relative rounded-xl border ${style.border} bg-gradient-to-br ${style.bg} shadow-md ${style.glow} overflow-hidden`}
+                className={`relative rounded-xl ${style.border} bg-gradient-to-br ${style.bg} shadow-md ${style.glow} overflow-hidden`}
             >
                 {imageUrl && (
                     <img
@@ -57,9 +57,18 @@ export default function CharacterCard({
                     </div>
                 )}
                 <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm px-2 py-1.5">
-                    <p className="text-xs font-bold text-white truncate">{name} {isAwakened && '🦋'}</p>
-                    <p className="text-[10px] text-white/50 truncate">{series}</p>
-                    <p className="text-[10px] text-yellow-300">{stars}</p>
+                    <div className="flex items-start justify-between gap-1">
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-white truncate">{name} {isAwakened && '🦋'}</p>
+                            <p className="text-[10px] text-white/50 truncate">{series}</p>
+                            <p className="text-[10px] text-yellow-300">{stars}</p>
+                        </div>
+                        {upgradesPerformed && upgradesPerformed.length > 0 && (
+                            <div className="text-[9px] bg-yellow-500/30 text-yellow-300 px-1 py-0.5 rounded shrink-0">
+                                {upgradesPerformed[0].from_star}★→{upgradesPerformed[upgradesPerformed.length - 1].to_star}★
+                            </div>
+                        )}
+                    </div>
                 </div>
                 {/* NEW badge */}
                 {isNew && (
@@ -81,7 +90,7 @@ export default function CharacterCard({
 
     return (
         <div
-            className={`rounded-xl border ${style.border} bg-gradient-to-br ${style.bg} shadow-lg ${style.glow} p-3 space-y-2`}
+            className={`rounded-xl ${style.border} bg-gradient-to-br ${style.bg} shadow-lg ${style.glow} p-3 space-y-2`}
         >
             {/* Image */}
             {imageUrl ? (
@@ -99,12 +108,21 @@ export default function CharacterCard({
 
             {/* Name row */}
             <div className="flex items-start justify-between gap-1">
-                <p className="font-bold text-sm text-white leading-tight">
-                    {name} {isAwakened && <span className="text-amber-300">🦋</span>}
-                </p>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${rarity === 3 ? 'bg-yellow-500/90 text-black' : rarity === 2 ? 'bg-blue-500/90 text-white' : 'bg-gray-500/80 text-white'}`}>
-                    {style.label}
-                </span>
+                <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm text-white leading-tight">
+                        {name} {isAwakened && <span className="text-amber-300">🦋</span>}
+                    </p>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                    {upgradesPerformed && upgradesPerformed.length > 0 && (
+                        <span className="text-[10px] bg-yellow-500/30 text-yellow-300 px-1.5 py-0.5 rounded-full font-semibold">
+                            {upgradesPerformed[0].from_star}★→{upgradesPerformed[upgradesPerformed.length - 1].to_star}★
+                        </span>
+                    )}
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${rarity === 3 ? 'bg-yellow-500/90 text-black' : rarity === 2 ? 'bg-blue-500/90 text-white' : 'bg-gray-500/80 text-white'}`}>
+                        {style.label}
+                    </span>
+                </div>
             </div>
 
             <p className="text-[11px] text-white/50 truncate">{series}</p>
@@ -125,11 +143,6 @@ export default function CharacterCard({
                 {isDuplicate && quartzGained !== undefined && quartzGained > 0 && (
                     <span className="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-1.5 py-0.5 rounded-full">
                         +{quartzGained} 💠
-                    </span>
-                )}
-                {upgradesPerformed && upgradesPerformed.length > 0 && (
-                    <span className="text-[10px] bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 px-1.5 py-0.5 rounded-full">
-                        ⬆ {upgradesPerformed[upgradesPerformed.length - 1].to_star}★
                     </span>
                 )}
             </div>

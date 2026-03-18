@@ -166,6 +166,15 @@ class NwnlWaifuService:
                 if w["waifu_id"] in featured_ids
             ]
 
+        elif banner_type == "limited":
+            # For limited banners, show all limited characters (from banner_items)
+            item_ids_set = set(item_ids)
+            rate_up_characters = [
+                {**w, "is_rate_up": False}
+                for w in self._waifu_list
+                if w["waifu_id"] in item_ids_set and w.get("rarity") in (2, 3)
+            ]
+
         return {
             "banner_id": banner_id,
             "banner_name": banner.get("name", ""),
