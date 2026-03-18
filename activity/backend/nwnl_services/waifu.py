@@ -72,6 +72,13 @@ class NwnlWaifuService:
             series_ids = list(series_ids_raw)
         series_id_set = {int(s) for s in series_ids if s}
 
+        # Combine rate_up_ids with all characters from rate-up series
+        featured_ids = set(rate_up_ids)
+        if banner_type == "rate-up" and series_id_set:
+            for w in self._waifu_list:
+                if w.get("series_id") in series_id_set:
+                    featured_ids.add(w["waifu_id"])
+
         result = []
         for w in self._waifu_list:
             rarity = w.get("rarity", 0)
@@ -91,7 +98,7 @@ class NwnlWaifuService:
             if in_pool:
                 result.append({
                     **w,
-                    "is_rate_up": wid in rate_up_ids,
+                    "is_rate_up": wid in featured_ids,
                 })
         return result
 
@@ -115,10 +122,28 @@ class NwnlWaifuService:
         featured_rate_per_char: Optional[float] = None
         standard_rate_per_char: Optional[float] = None
 
-        if banner_type == "rate-up" and rate_up_ids:
+        if banner_type == "rate-up":
+            # Also resolve series_ids from the banner to get all featured characters
+            import json as _json
+            series_ids_raw = banner.get("series_ids") or "[]"
+            if isinstance(series_ids_raw, str):
+                try:
+                    series_ids = _json.loads(series_ids_raw)
+                except Exception:
+                    series_ids = []
+            else:
+                series_ids = list(series_ids_raw)
+            series_id_set = {int(s) for s in series_ids if s}
+
+            # Combine rate_up_ids from banner_items with all characters from series_ids
+            featured_ids = set(rate_up_ids)
+            for w in self._waifu_list:
+                if w.get("series_id") in series_id_set:
+                    featured_ids.add(w["waifu_id"])
+
             # Compute per-character rates within the 3★ tier
             pool_3 = [w for w in self._waifu_list if w.get("rarity") == 3]
-            n_rate_up = sum(1 for w in pool_3 if w["waifu_id"] in rate_up_ids)
+            n_rate_up = sum(1 for w in pool_3 if w["waifu_id"] in featured_ids)
             n_normal = len(pool_3) - n_rate_up
 
             if n_rate_up > 0 and n_normal > 0:
@@ -138,7 +163,7 @@ class NwnlWaifuService:
             rate_up_characters = [
                 {**w, "is_rate_up": True}
                 for w in self._waifu_list
-                if w["waifu_id"] in rate_up_ids
+                if w["waifu_id"] in featured_ids
             ]
 
         return {
@@ -220,7 +245,7 @@ class NwnlWaifuService:
 
         return {
             "success": True,
-            "waifu": selected,
+            "waifu": _slim_waifu(selected),
             "rarity": rarity,
             "currency_type": currency_type,
             "cost": cost,
@@ -295,7 +320,7 @@ class NwnlWaifuService:
             await self.db.update_user_quartzs(discord_id, 1)
 
             results.append({
-                "waifu": selected,
+                "waifu": _slim_waifu(selected),
                 "rarity": rarity,
                 **summon_result,
             })
@@ -402,12 +427,30 @@ class NwnlWaifuService:
         rate_up_ids = {i["item_id"] for i in items if i.get("rate_up")}
 
         if banner_type == "rate-up":
+            # Combine rate_up_ids with all characters from banner's series_ids
+            import json as _json
+            banner = await self.db.get_banner(banner_id)
+            series_ids_raw = (banner.get("series_ids") or "[]") if banner else "[]"
+            if isinstance(series_ids_raw, str):
+                try:
+                    series_ids = _json.loads(series_ids_raw)
+                except Exception:
+                    series_ids = []
+            else:
+                series_ids = list(series_ids_raw)
+            series_id_set = {int(s) for s in series_ids if s}
+
+            featured_ids = set(rate_up_ids)
+            for w in self._waifu_list:
+                if w.get("series_id") in series_id_set:
+                    featured_ids.add(w["waifu_id"])
+
             pool = [w for w in self._waifu_list if w.get("rarity") == rarity]
-            n_rate_up = sum(1 for w in pool if w["waifu_id"] in rate_up_ids)
+            n_rate_up = sum(1 for w in pool if w["waifu_id"] in featured_ids)
             n_normal = len(pool) - n_rate_up
             if n_rate_up > 0 and n_normal > 0:
                 weights = [
-                    (n_normal / RATE_UP_DIVISOR) if w["waifu_id"] in rate_up_ids else (n_rate_up * RATE_UP_MULTIPLIER)
+                    (n_normal / RATE_UP_DIVISOR) if w["waifu_id"] in featured_ids else (n_rate_up * RATE_UP_MULTIPLIER)
                     for w in pool
                 ]
             else:
@@ -506,6 +549,17 @@ class NwnlWaifuService:
 
 
 # ─── Utilities ────────────────────────────────────────────────────────
+
+def _slim_waifu(w: Dict[str, Any]) -> Dict[str, Any]:
+    """Return only the fields the frontend needs for summon results."""
+    return {
+        "waifu_id": w.get("waifu_id"),
+        "name": w.get("name"),
+        "series": w.get("series"),
+        "rarity": w.get("rarity"),
+        "image_url": w.get("image_url"),
+    }
+
 
 def _currency_field(currency_type: str) -> str:
     return {"sakura_crystals": "sakura_crystals", "quartzs": "quartzs", "daphine": "daphine"}.get(

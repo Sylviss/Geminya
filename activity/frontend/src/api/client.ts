@@ -89,8 +89,8 @@ export const nwnlBannerApi = {
 }
 
 export const nwnlSummonApi = {
-    single: (bannerId?: number) => api.post('/nwnl/summon', { banner_id: bannerId ?? null }),
-    multi: (bannerId?: number) => api.post('/nwnl/summon/multi', { banner_id: bannerId ?? null }),
+    single: (bannerId?: number) => api.post('/nwnl/summon', { banner_id: bannerId ?? null, count: 1 }, { timeout: 60000 }),
+    multi: (bannerId?: number) => api.post('/nwnl/summon', { banner_id: bannerId ?? null, count: 10 }, { timeout: 60000 }),
     awaken: (waifuId: number) => api.post(`/nwnl/summon/awaken/${waifuId}`),
 }
 

@@ -210,12 +210,13 @@ function BannerInfoModal({
                                         />
                                     ) : (
                                         <div className="w-full aspect-[3/4] flex items-center justify-center bg-white/5 text-3xl">
-                                            ⭐⭐⭐
+                                            {'⭐'.repeat(char.rarity)}
                                         </div>
                                     )}
                                     <div className="absolute bottom-0 left-0 right-0 bg-black/70 backdrop-blur-sm px-1.5 py-1">
                                         <p className="text-[10px] font-bold text-white truncate">{char.name}</p>
                                         <p className="text-[9px] text-white/50 truncate">{char.series}</p>
+                                        <p className="text-[9px] text-yellow-300">{'⭐'.repeat(char.rarity)}</p>
                                     </div>
                                     <div className="absolute top-1 right-1 bg-yellow-500/90 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-full">
                                         UP
@@ -303,7 +304,14 @@ export default function Summon() {
             setLastSingle(data)
             updateCurrencyFromResult(data)
         } catch (err: any) {
-            setError(err?.response?.data?.detail || 'Summon failed')
+            const detail = err?.response?.data?.detail
+            if (detail) {
+                setError(detail)
+            } else if (err?.code === 'ECONNABORTED') {
+                setError('Summon timed out. Please try again.')
+            } else {
+                setError(`Summon failed: ${err?.message || 'Unknown error'}`)
+            }
         } finally {
             setPulling(false)
         }
@@ -319,7 +327,14 @@ export default function Summon() {
             setMultiResult(data)
             updateCurrencyFromResult(data)
         } catch (err: any) {
-            setError(err?.response?.data?.detail || 'Multi summon failed')
+            const detail = err?.response?.data?.detail
+            if (detail) {
+                setError(detail)
+            } else if (err?.code === 'ECONNABORTED') {
+                setError('Multi summon timed out. Please try again.')
+            } else {
+                setError(`Multi summon failed: ${err?.message || 'Unknown error'}`)
+            }
         } finally {
             setPulling(false)
         }
