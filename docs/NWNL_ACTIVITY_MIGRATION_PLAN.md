@@ -86,7 +86,7 @@ Each cog follows the same loop:
 | `/nwnl/academy/rename` | POST | Rename academy |
 | `/nwnl/academy/reset` | POST | Reset account |
 | `/nwnl/academy/delete` | DELETE | Delete account permanently |
-| `/nwnl/academy/search` | GET | Filtered collection search with stats *(Note: will move to Phase 2C collection router later)* |
+| ~~`/nwnl/academy/search`~~ | ~~GET~~ | ~~Filtered collection search with stats~~ **→ MOVED to `/nwnl/collection/search` in Phase 2C** |
 
 #### Frontend
 
@@ -95,7 +95,7 @@ Each cog follows the same loop:
 | `pages/Academy.tsx` | Rank badge, crystal/quartzs/daphine display, star distribution chart |
 | Daily claim button | With countdown timer to next UTC+7 reset |
 | Missions panel | Progress bars + claim buttons per mission |
-| Collection search | Filter by name/series/element/archetype, paginated results *(Note: will move to Phase 2C collection page later)* |
+| ~~Collection search~~ | ~~Filter by name/series/element/archetype, paginated results~~ **→ MOVED to Collection page in Phase 2C** |
 
 **Delete:** `cogs/commands/waifu_academy.py`
 
@@ -124,25 +124,27 @@ Each cog follows the same loop:
 | `components/nwnl/SummonResults.tsx` | Multi-pull result grid with rarity highlights |
 | `components/nwnl/CharacterCard.tsx` | **Reusable** — rarity border, star level, stats preview |
 
-**Delete:** `cogs/commands/waifu_summon.py`, `cogs/commands/banner.py` (Wait until Phase 2C to delete `waifu_awaken.py`)
+**Delete:** `cogs/commands/waifu_summon.py`, `cogs/commands/banner.py`
+
+**Note:** `cogs/commands/waifu_awaken.py` deletion moved to Phase 2C
 
 ---
 
-### 2C — Collection + Database Browser + Awaken (3 days)
+### 2C — Collection + Database Browser + Awaken (3 days) ✅ IN PROGRESS
 
-**Read-only views, relatively simple, used constantly.**
+**Read-only views + awaken functionality, relatively simple, used constantly.**
 
 #### Backend — `activity/backend/routers/nwnl_collection.py`
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/nwnl/collection` | GET | User's collection (paginated, filterable) |
-| `/nwnl/collection/search` | GET | Search/filter user's waifu collection by name, series, genre, archetype, element *(from Phase 2A)* |
+| `/nwnl/collection/search` | GET | Search/filter user's waifu collection by name, series, genre, archetype, element *(moved from Phase 2A `/nwnl/academy/search`)* |
 | `/nwnl/collection/{waifu_id}` | GET | Character profile detail |
-| `/nwnl/database` | GET | Browse all series (paginated) |
-| `/nwnl/database/series/{id}` | GET | Series detail + characters |
-| `/nwnl/database/search` | GET | Search characters/series by name |
-| `/nwnl/awaken/{waifu_id}` | POST | Awaken character (costs 1 Daphine) - *Moved from 2B* |
+| `/nwnl/collection/awaken/{waifu_id}` | POST | Awaken character (costs 1 Daphine) - *(moved from Phase 2B `/nwnl/summon/awaken/{waifu_id}`)* |
+| `/nwnl/collection/database/series` | GET | Browse all series (paginated) |
+| `/nwnl/collection/database/series/{id}` | GET | Series detail + characters |
+| `/nwnl/collection/database/search` | GET | Search characters/series by name |
 
 #### Frontend
 
@@ -152,9 +154,11 @@ Each cog follows the same loop:
 | `pages/CharacterProfile.tsx` | Full card: stats radar chart, star progress, shard count, awakening status |
 | `pages/Database.tsx` | All series browser with search, click into series → character list |
 | `components/nwnl/StatsRadar.tsx` | **Reusable** 7-axis radar chart (atk/mag/vit/spr/int/spd/lck) |
-| `components/nwnl/AwakenDialog.tsx` | Confirm/cancel modal showing Daphine cost - *Moved from 2B* |
+| `components/nwnl/AwakenDialog.tsx` | Confirm/cancel modal showing Daphine cost - *(moved from 2B, updated to use `/nwnl/collection/awaken`)* |
 
-**Delete:** Collection/database commands already gone with 2B (same cog file) + `cogs/commands/waifu_awaken.py`
+**Delete:** `cogs/commands/waifu_awaken.py` (awaken functionality is now in collection router)
+
+**Note:** Collection/database commands already gone with 2B (same cog file)
 
 ---
 

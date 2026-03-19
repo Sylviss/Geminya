@@ -77,8 +77,7 @@ export const nwnlAcademyApi = {
     rename: (name: string) => api.post('/nwnl/academy/rename', { name }),
     reset: (confirmation: string) => api.post('/nwnl/academy/reset', { confirmation }),
     deleteAccount: (confirmation: string) => api.delete('/nwnl/academy/delete', { data: { confirmation } }),
-    searchCollection: (params: { name?: string; series?: string; genre?: string; archetype?: string; element?: string; page?: number; page_size?: number }) =>
-        api.get('/nwnl/academy/search', { params }),
+    // NOTE: searchCollection moved to nwnlCollectionApi
 }
 
 export const nwnlBannerApi = {
@@ -91,7 +90,22 @@ export const nwnlBannerApi = {
 export const nwnlSummonApi = {
     single: (bannerId?: number) => api.post('/nwnl/summon', { banner_id: bannerId ?? null, count: 1 }, { timeout: 60000 }),
     multi: (bannerId?: number) => api.post('/nwnl/summon', { banner_id: bannerId ?? null, count: 10 }, { timeout: 60000 }),
-    awaken: (waifuId: number) => api.post(`/nwnl/summon/awaken/${waifuId}`),
+    // NOTE: awaken moved to nwnlCollectionApi
+}
+
+export const nwnlCollectionApi = {
+    // Collection browsing
+    getCollection: (params?: { page?: number; page_size?: number }) => api.get('/nwnl/collection', { params }),
+    searchCollection: (params: { name?: string; series?: string; genre?: string; archetype?: string; element?: string; page?: number; page_size?: number }) =>
+        api.get('/nwnl/collection/search', { params }),
+    getCharacterProfile: (waifuId: number) => api.get(`/nwnl/collection/${waifuId}`),
+    // Awaken (moved from summon)
+    awaken: (waifuId: number) => api.post(`/nwnl/collection/awaken/${waifuId}`),
+    // Database browser
+    getAllSeries: (params?: { page?: number; page_size?: number }) => api.get('/nwnl/collection/database/series', { params }),
+    getSeriesDetail: (seriesId: number) => api.get(`/nwnl/collection/database/series/${seriesId}`),
+    searchDatabase: (params: { query: string; type?: 'all' | 'series' | 'characters'; limit?: number }) =>
+        api.get('/nwnl/collection/database/search', { params }),
 }
 
 export default api

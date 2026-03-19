@@ -566,6 +566,77 @@ class NwnlDatabaseService:
     #  Daily Missions
     # ═══════════════════════════════════════════════════════════════════
 
+    # ═══════════════════════════════════════════════════════════════════
+    #  Series Database Browser
+    # ═══════════════════════════════════════════════════════════════════
+
+    async def get_all_series(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+        """Get paginated list of all series."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT * FROM series ORDER BY name ASC LIMIT $1 OFFSET $2",
+                limit, offset
+            )
+            return [dict(row) for row in rows]
+
+    async def get_series_count(self) -> int:
+        """Get total count of series."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT COUNT(*) as count FROM series")
+            return row["count"] if row else 0
+
+    async def get_series_by_id(self, series_id: int) -> Optional[Dict[str, Any]]:
+        """Get a series by its ID."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM series WHERE series_id = $1", series_id
+            )
+            return dict(row) if row else None
+
+    async def get_waifus_by_series_id(self, series_id: int) -> List[Dict[str, Any]]:
+        """Get all waifus belonging to a series."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT w.*, s.name AS series
+                FROM waifus w
+                LEFT JOIN series s ON w.series_id = s.series_id
+                WHERE w.series_id = $1
+                ORDER BY w.rarity DESC, w.name ASC
+                """,
+                series_id
+            )
+            return [_parse_waifu_json_fields(dict(row)) for row in rows]
+
+    async def search_series(self, query: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """Search series by name (case-insensitive substring match)."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT * FROM series WHERE LOWER(name) LIKE $1 ORDER BY name ASC LIMIT $2",
+                f"%{query.lower()}%", limit
+            )
+            return [dict(row) for row in rows]
+
+    async def search_waifus(self, query: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """Search waifus by name (case-insensitive substring match)."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT w.*, s.name AS series
+                FROM waifus w
+                LEFT JOIN series s ON w.series_id = s.series_id
+                WHERE LOWER(w.name) LIKE $1
+                ORDER BY w.rarity DESC, w.name ASC
+                LIMIT $2
+                """,
+                f"%{query.lower()}%", limit
+            )
+            return [_parse_waifu_json_fields(dict(row)) for row in rows]
+
+    # ═══════════════════════════════════════════════════════════════════
+    #  Daily Missions
+    # ═══════════════════════════════════════════════════════════════════
+
     async def get_all_active_daily_missions(self) -> List[Dict[str, Any]]:
         """Fetch all active daily missions."""
         async with self.pool.acquire() as conn:
