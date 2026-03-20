@@ -80,33 +80,13 @@ export default function Sidebar() {
                 </Link>
                 <Link
                     to="/summon"
-                    className={`w-full h-10 rounded-xl flex items-center gap-2 px-2 transition-all ${location.pathname === '/summon' || location.pathname === '/banners'
+                    className={`w-full h-10 rounded-xl flex items-center gap-2 px-2 transition-all ${location.pathname === '/summon'
                         ? 'bg-gradient-to-br from-yellow-500 to-amber-500 shadow-lg'
                         : 'hover:bg-white/10'
                         }`}
                 >
                     <span className="text-lg">✨</span>
                     <span className="font-medium text-xs">Summon</span>
-                </Link>
-                <Link
-                    to="/nwnl/collection"
-                    className={`w-full h-10 rounded-xl flex items-center gap-2 px-2 transition-all ${location.pathname.startsWith('/nwnl/collection')
-                        ? 'bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg'
-                        : 'hover:bg-white/10'
-                        }`}
-                >
-                    <span className="text-lg">📚</span>
-                    <span className="font-medium text-xs">Collection</span>
-                </Link>
-                <Link
-                    to="/nwnl/database"
-                    className={`w-full h-10 rounded-xl flex items-center gap-2 px-2 transition-all ${location.pathname.startsWith('/nwnl/database')
-                        ? 'bg-gradient-to-br from-purple-500 to-indigo-500 shadow-lg'
-                        : 'hover:bg-white/10'
-                        }`}
-                >
-                    <span className="text-lg">🗄️</span>
-                    <span className="font-medium text-xs">Database</span>
                 </Link>
             </div>
 

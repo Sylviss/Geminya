@@ -10,11 +10,6 @@ import GuessOpening from './pages/GuessOpening'
 import GuessEnding from './pages/GuessEnding'
 import Academy from './pages/Academy'
 import Summon from './pages/Summon'
-import Banners from './pages/Banners'
-import Collection from './pages/Collection'
-import CharacterProfile from './pages/CharacterProfile'
-import Database from './pages/Database'
-import SeriesDetail from './pages/SeriesDetail'
 
 declare global {
     interface Window {
@@ -89,15 +84,8 @@ function App() {
                         <Route path="/guess-character" element={<GuessCharacter />} />
                         <Route path="/guess-opening" element={<GuessOpening />} />
                         <Route path="/guess-ending" element={<GuessEnding />} />
-
-                        {/* NWNL Routes (Phase 2A, 2B, 2C) */}
                         <Route path="/academy" element={<Academy />} />
                         <Route path="/summon" element={<Summon />} />
-                        <Route path="/banners" element={<Banners />} />
-                        <Route path="/nwnl/collection" element={<Collection />} />
-                        <Route path="/nwnl/collection/:waifuId" element={<CharacterProfile />} />
-                        <Route path="/nwnl/database" element={<Database />} />
-                        <Route path="/nwnl/database/series/:seriesId" element={<SeriesDetail />} />
                     </Routes>
                 </div>
             </div>

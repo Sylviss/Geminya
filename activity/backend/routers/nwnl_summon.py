@@ -1,9 +1,8 @@
-"""Summon API routes for NWNL Activity.
+"""Summon and awaken API routes for NWNL Activity.
 
 POST /nwnl/summon               → single pull (count=1) or 10x pull (count=10)
 POST /nwnl/summon/multi         → 10x pull (kept for backwards compat)
-
-Note: Awaken endpoint moved to /nwnl/collection/{waifu_id}/awaken in Phase 2C
+POST /nwnl/awaken/{waifu_id}    → awaken a character (costs 1 Daphine)
 """
 
 import logging
@@ -79,4 +78,23 @@ async def multi_summon(
     except Exception as e:
         logger.error(f"Multi summon error for user {user_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal summon error: {str(e)}")
+    return result
+
+
+@router.post("/awaken/{waifu_id}")
+async def awaken_waifu(
+    waifu_id: int,
+    user_id: str = Depends(get_current_user),
+    lock: asyncio.Lock = Depends(get_user_lock),
+    request: Request = None,
+):
+    """Awaken a waifu (costs 1 Daphine). Returns updated waifu info."""
+    svc = _get_waifu_service(request)
+    nwnl_db = getattr(request.app.state, "nwnl_db", None)
+    if nwnl_db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    async with lock:
+        result = await nwnl_db.awaken_user_waifu(user_id, waifu_id)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("message", "Awaken failed"))
     return result

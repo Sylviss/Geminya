@@ -77,6 +77,8 @@ export const nwnlAcademyApi = {
     rename: (name: string) => api.post('/nwnl/academy/rename', { name }),
     reset: (confirmation: string) => api.post('/nwnl/academy/reset', { confirmation }),
     deleteAccount: (confirmation: string) => api.delete('/nwnl/academy/delete', { data: { confirmation } }),
+    searchCollection: (params: { name?: string; series?: string; genre?: string; archetype?: string; element?: string; page?: number; page_size?: number }) =>
+        api.get('/nwnl/academy/search', { params }),
 }
 
 export const nwnlBannerApi = {
@@ -89,36 +91,7 @@ export const nwnlBannerApi = {
 export const nwnlSummonApi = {
     single: (bannerId?: number) => api.post('/nwnl/summon', { banner_id: bannerId ?? null, count: 1 }, { timeout: 60000 }),
     multi: (bannerId?: number) => api.post('/nwnl/summon', { banner_id: bannerId ?? null, count: 10 }, { timeout: 60000 }),
-}
-
-// Phase 2C: Collection & Database Browser API
-export const nwnlCollectionApi = {
-    // Collection search (moved from academy)
-    search: (params: {
-        name?: string;
-        series?: string;
-        genre?: string;
-        archetype?: string;
-        element?: string;
-        rarity?: number;
-        page?: number;
-        page_size?: number
-    }) => api.get('/nwnl/collection/search', { params }),
-
-    // Character profile
-    getCharacter: (waifuId: number) => api.get(`/nwnl/collection/${waifuId}`),
-
-    // Awaken character (moved from summon)
-    awaken: (waifuId: number) => api.post(`/nwnl/collection/${waifuId}/awaken`),
-
-    // Database browsing
-    browseSeries: (params?: { page?: number; page_size?: number }) =>
-        api.get('/nwnl/collection/database/browse', { params }),
-
-    getSeries: (seriesId: number) => api.get(`/nwnl/collection/database/series/${seriesId}`),
-
-    searchDatabase: (query: string, params?: { page?: number; page_size?: number }) =>
-        api.get('/nwnl/collection/database/search', { params: { query, ...params } }),
+    awaken: (waifuId: number) => api.post(`/nwnl/summon/awaken/${waifuId}`),
 }
 
 export default api
