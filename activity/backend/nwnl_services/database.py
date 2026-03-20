@@ -620,3 +620,162 @@ class NwnlDatabaseService:
                     mission["reward_amount"], discord_id,
                 )
             return True
+
+    # ═══════════════════════════════════════════════════════════════════
+    #  Series & Database Browser Methods (Phase 2C)
+    # ═══════════════════════════════════════════════════════════════════
+
+    async def get_all_series_paginated(self, page: int = 1, page_size: int = 20) -> Dict[str, Any]:
+        """Get paginated list of all series with character counts."""
+        async with self.pool.acquire() as conn:
+            # Get total count
+            total_row = await conn.fetchrow("SELECT COUNT(*) as total FROM series")
+            total = total_row["total"] if total_row else 0
+
+            page_count = max(1, (total + page_size - 1) // page_size)
+            page = max(1, min(page, page_count))
+            offset = (page - 1) * page_size
+
+            # Get paginated series with character counts
+            rows = await conn.fetch(
+                """
+                SELECT s.series_id, s.name, s.image_url, s.description,
+                       COUNT(w.waifu_id) as character_count
+                FROM series s
+                LEFT JOIN waifus w ON s.series_id = w.series_id
+                GROUP BY s.series_id, s.name, s.image_url, s.description
+                ORDER BY s.name ASC
+                LIMIT $1 OFFSET $2
+                """,
+                page_size, offset
+            )
+
+            series_list = [dict(row) for row in rows]
+
+            return {
+                "series": series_list,
+                "total": total,
+                "page": page,
+                "page_count": page_count,
+                "page_size": page_size
+            }
+
+    async def get_series_detail(self, series_id: int) -> Optional[Dict[str, Any]]:
+        """Get series detail with metadata."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT series_id, name, image_url, description FROM series WHERE series_id = $1",
+                series_id
+            )
+            if not row:
+                return None
+
+            series_dict = dict(row)
+            # Get genres for this series
+            genres = await self.get_series_genres(series_id)
+            series_dict["genres"] = genres
+
+            return series_dict
+
+    async def get_series_characters(self, series_id: int) -> List[Dict[str, Any]]:
+        """Get all characters from a specific series."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT waifu_id, name, series, rarity, image_url, archetype,
+                       elemental_type, stats
+                FROM waifus
+                WHERE series_id = $1
+                ORDER BY rarity DESC, name ASC
+                """,
+                series_id
+            )
+            return [_parse_waifu_json_fields(dict(row)) for row in rows]
+
+    async def search_database(self, query: str, page: int = 1, page_size: int = 20) -> Dict[str, Any]:
+        """Search across all characters and series by name."""
+        query_lower = query.lower()
+
+        async with self.pool.acquire() as conn:
+            # Search characters
+            char_rows = await conn.fetch(
+                """
+                SELECT waifu_id, name, series, series_id, rarity, image_url,
+                       archetype, elemental_type
+                FROM waifus
+                WHERE LOWER(name) LIKE $1
+                ORDER BY rarity DESC, name ASC
+                """,
+                f"%{query_lower}%"
+            )
+
+            # Search series
+            series_rows = await conn.fetch(
+                """
+                SELECT s.series_id, s.name, s.image_url, s.description,
+                       COUNT(w.waifu_id) as character_count
+                FROM series s
+                LEFT JOIN waifus w ON s.series_id = w.series_id
+                WHERE LOWER(s.name) LIKE $1
+                GROUP BY s.series_id, s.name, s.image_url, s.description
+                ORDER BY s.name ASC
+                """,
+                f"%{query_lower}%"
+            )
+
+            characters = [_parse_waifu_json_fields(dict(row)) for row in char_rows]
+            series = [dict(row) for row in series_rows]
+
+            # Pagination for characters
+            total_chars = len(characters)
+            page_count = max(1, (total_chars + page_size - 1) // page_size)
+            page = max(1, min(page, page_count))
+            start = (page - 1) * page_size
+
+            return {
+                "characters": characters[start : start + page_size],
+                "series": series,
+                "total_characters": total_chars,
+                "total_series": len(series),
+                "page": page,
+                "page_count": page_count,
+                "page_size": page_size
+            }
+
+    async def get_waifu_detail(self, waifu_id: int, discord_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Get full waifu details. If discord_id provided, includes user ownership data."""
+        async with self.pool.acquire() as conn:
+            # Get base waifu data
+            waifu_row = await conn.fetchrow(
+                """
+                SELECT w.waifu_id, w.name, w.series, w.series_id, w.rarity,
+                       w.image_url, w.archetype, w.elemental_type, w.stats,
+                       s.description as series_description
+                FROM waifus w
+                LEFT JOIN series s ON w.series_id = s.series_id
+                WHERE w.waifu_id = $1
+                """,
+                waifu_id
+            )
+
+            if not waifu_row:
+                return None
+
+            waifu = _parse_waifu_json_fields(dict(waifu_row))
+
+            # Get genres
+            if waifu.get("series_id"):
+                waifu["genres"] = await self.get_series_genres(waifu["series_id"])
+
+            # If user provided, get ownership data
+            if discord_id:
+                user_waifu = await self.get_user_waifu(discord_id, waifu_id)
+                if user_waifu:
+                    waifu["owned"] = True
+                    waifu["current_star_level"] = user_waifu["current_star_level"]
+                    waifu["character_shards"] = user_waifu.get("star_shards", 0)
+                    waifu["is_awakened"] = user_waifu.get("is_awakened", False)
+                else:
+                    waifu["owned"] = False
+
+            return waifu
