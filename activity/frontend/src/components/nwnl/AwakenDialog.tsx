@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { nwnlSummonApi } from '../../api/client'
+import { nwnlCollectionApi } from '../../api/client'
 
 interface AwakenDialogProps {
     waifuId: number
@@ -26,7 +26,7 @@ export default function AwakenDialog({
         setLoading(true)
         setError(null)
         try {
-            await nwnlSummonApi.awaken(waifuId)
+            await nwnlCollectionApi.awaken(waifuId)
             setDone(true)
             onAwakened()
         } catch (err: any) {
