@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { nwnlAcademyApi } from '../../api/client'
+import { nwnlCollectionApi } from '../../api/client'
 
 interface WaifuResult {
     waifu_id: number
@@ -47,7 +47,7 @@ export default function CollectionSearch() {
             if (nameQ.trim()) params.name = nameQ.trim()
             if (seriesQ.trim()) params.series = seriesQ.trim()
 
-            const { data: res } = await nwnlAcademyApi.searchCollection(params)
+            const { data: res } = await nwnlCollectionApi.search(params)
             setData(res)
             setSearched(true)
         } catch (err: any) {
