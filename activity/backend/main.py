@@ -149,6 +149,10 @@ app.include_router(nwnl_banner_router, prefix="/nwnl/banners", tags=["nwnl-banne
 from routers.nwnl_summon import router as nwnl_summon_router
 app.include_router(nwnl_summon_router, prefix="/nwnl/summon", tags=["nwnl-summon"])
 
+# NWNL Collection + Database + Awaken routes
+from routers.nwnl_collection import router as nwnl_collection_router
+app.include_router(nwnl_collection_router, prefix="/nwnl", tags=["nwnl-collection"])
+
 
 class TokenRequest(BaseModel):
     code: str

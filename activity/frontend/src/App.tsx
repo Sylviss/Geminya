@@ -10,6 +10,10 @@ import GuessOpening from './pages/GuessOpening'
 import GuessEnding from './pages/GuessEnding'
 import Academy from './pages/Academy'
 import Summon from './pages/Summon'
+import Banners from './pages/Banners'
+import Collection from './pages/Collection'
+import CharacterProfile from './pages/CharacterProfile'
+import Database from './pages/Database'
 
 declare global {
     interface Window {
@@ -85,7 +89,11 @@ function App() {
                         <Route path="/guess-opening" element={<GuessOpening />} />
                         <Route path="/guess-ending" element={<GuessEnding />} />
                         <Route path="/academy" element={<Academy />} />
+                        <Route path="/banners" element={<Banners />} />
                         <Route path="/summon" element={<Summon />} />
+                        <Route path="/collection" element={<Collection />} />
+                        <Route path="/collection/:waifuId" element={<CharacterProfile />} />
+                        <Route path="/database" element={<Database />} />
                     </Routes>
                 </div>
             </div>

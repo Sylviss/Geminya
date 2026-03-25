@@ -79,6 +79,16 @@ export default function Sidebar() {
                     <span className="font-medium text-xs">Academy</span>
                 </Link>
                 <Link
+                    to="/banners"
+                    className={`w-full h-10 rounded-xl flex items-center gap-2 px-2 transition-all ${location.pathname === '/banners'
+                        ? 'bg-gradient-to-br from-fuchsia-500 to-rose-500 shadow-lg'
+                        : 'hover:bg-white/10'
+                        }`}
+                >
+                    <span className="text-lg">🎴</span>
+                    <span className="font-medium text-xs">Banners</span>
+                </Link>
+                <Link
                     to="/summon"
                     className={`w-full h-10 rounded-xl flex items-center gap-2 px-2 transition-all ${location.pathname === '/summon'
                         ? 'bg-gradient-to-br from-yellow-500 to-amber-500 shadow-lg'
@@ -87,6 +97,26 @@ export default function Sidebar() {
                 >
                     <span className="text-lg">✨</span>
                     <span className="font-medium text-xs">Summon</span>
+                </Link>
+                <Link
+                    to="/collection"
+                    className={`w-full h-10 rounded-xl flex items-center gap-2 px-2 transition-all ${location.pathname.startsWith('/collection')
+                        ? 'bg-gradient-to-br from-cyan-500 to-blue-500 shadow-lg'
+                        : 'hover:bg-white/10'
+                        }`}
+                >
+                    <span className="text-lg">📚</span>
+                    <span className="font-medium text-xs">Collection</span>
+                </Link>
+                <Link
+                    to="/database"
+                    className={`w-full h-10 rounded-xl flex items-center gap-2 px-2 transition-all ${location.pathname.startsWith('/database')
+                        ? 'bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg'
+                        : 'hover:bg-white/10'
+                        }`}
+                >
+                    <span className="text-lg">🗂️</span>
+                    <span className="font-medium text-xs">Database</span>
                 </Link>
             </div>
 

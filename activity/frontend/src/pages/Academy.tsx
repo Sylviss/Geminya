@@ -3,7 +3,6 @@ import { nwnlAcademyApi } from '../api/client'
 import CurrencyDisplay from '../components/nwnl/CurrencyDisplay'
 import DailyClaimButton from '../components/nwnl/DailyClaimButton'
 import MissionsPanel from '../components/nwnl/MissionsPanel'
-import CollectionSearch from '../components/nwnl/CollectionSearch'
 
 interface AcademyStatus {
     academy_name: string
@@ -138,9 +137,6 @@ export default function Academy() {
 
             {/* Missions */}
             <MissionsPanel onMissionClaimed={refreshStatus} />
-
-            {/* Collection Search */}
-            <CollectionSearch />
         </div>
     )
 }

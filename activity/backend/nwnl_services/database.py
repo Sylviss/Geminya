@@ -224,6 +224,157 @@ class NwnlDatabaseService:
                 return []
             return [g.strip() for g in row["genres"].split("|") if g.strip()]
 
+    async def get_series_page(
+        self, page: int = 1, page_size: int = 20, name_query: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get paginated series list with optional name filtering."""
+        safe_page = max(1, page)
+        safe_page_size = max(1, min(page_size, 100))
+        offset = (safe_page - 1) * safe_page_size
+
+        where_sql = ""
+        params: List[Any] = []
+        if name_query:
+            where_sql = "WHERE LOWER(name) LIKE LOWER($1)"
+            params.append(f"%{name_query.strip()}%")
+
+        async with self.pool.acquire() as conn:
+            total_row = await conn.fetchrow(
+                f"SELECT COUNT(*) AS total FROM series {where_sql}", *params
+            )
+            total = int(total_row["total"]) if total_row else 0
+
+            if name_query:
+                rows = await conn.fetch(
+                    f"""
+                    SELECT series_id, name, english_name, image_link, creator,
+                           genres, synopsis, favorites, members, score, media_type
+                    FROM series
+                    {where_sql}
+                    ORDER BY COALESCE(members, 0) DESC, series_id ASC
+                    OFFSET $2 LIMIT $3
+                    """,
+                    *params,
+                    offset,
+                    safe_page_size,
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT series_id, name, english_name, image_link, creator,
+                           genres, synopsis, favorites, members, score, media_type
+                    FROM series
+                    ORDER BY COALESCE(members, 0) DESC, series_id ASC
+                    OFFSET $1 LIMIT $2
+                    """,
+                    offset,
+                    safe_page_size,
+                )
+
+        items: List[Dict[str, Any]] = []
+        for row in rows:
+            item = dict(row)
+            genres_raw = item.get("genres") or ""
+            item["genres_list"] = [g.strip() for g in genres_raw.split("|") if g.strip()]
+            items.append(item)
+
+        page_count = max(1, (total + safe_page_size - 1) // safe_page_size)
+        return {
+            "items": items,
+            "total": total,
+            "page": min(safe_page, page_count),
+            "page_count": page_count,
+            "page_size": safe_page_size,
+        }
+
+    async def get_series_by_id(self, series_id: int) -> Optional[Dict[str, Any]]:
+        """Get a single series row by series_id."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT series_id, name, english_name, image_link, creator,
+                       genres, synopsis, favorites, members, score, media_type
+                FROM series
+                WHERE series_id = $1
+                """,
+                series_id,
+            )
+            if not row:
+                return None
+            item = dict(row)
+            genres_raw = item.get("genres") or ""
+            item["genres_list"] = [g.strip() for g in genres_raw.split("|") if g.strip()]
+            return item
+
+    async def get_waifus_by_series_id(self, series_id: int) -> List[Dict[str, Any]]:
+        """Get all waifus belonging to a specific series."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT waifu_id, name, series, series_id, rarity, image_url,
+                       archetype, stats, elemental_type, potency,
+                       elemental_resistances, favorite_gifts, special_dialogue
+                FROM waifus
+                WHERE series_id = $1
+                ORDER BY rarity DESC, name ASC
+                """,
+                series_id,
+            )
+            return [_parse_waifu_json_fields(dict(row)) for row in rows]
+
+    async def search_series_and_waifus(
+        self, query: str, limit: int = 20
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """Search both series and waifus by name (case-insensitive)."""
+        q = (query or "").strip()
+        if not q:
+            return {"series": [], "characters": []}
+
+        safe_limit = max(1, min(limit, 100))
+        like = f"%{q}%"
+
+        async with self.pool.acquire() as conn:
+            series_rows = await conn.fetch(
+                """
+                SELECT series_id, name, english_name, image_link, creator,
+                       genres, synopsis, favorites, members, score, media_type
+                FROM series
+                WHERE LOWER(name) LIKE LOWER($1)
+                   OR LOWER(COALESCE(english_name, '')) LIKE LOWER($1)
+                ORDER BY COALESCE(members, 0) DESC, series_id ASC
+                LIMIT $2
+                """,
+                like,
+                safe_limit,
+            )
+
+            waifu_rows = await conn.fetch(
+                """
+                SELECT waifu_id, name, series, series_id, rarity, image_url,
+                       archetype, stats, elemental_type, potency,
+                       elemental_resistances, favorite_gifts, special_dialogue
+                FROM waifus
+                WHERE LOWER(name) LIKE LOWER($1)
+                   OR LOWER(series) LIKE LOWER($1)
+                ORDER BY rarity DESC, name ASC
+                LIMIT $2
+                """,
+                like,
+                safe_limit,
+            )
+
+        series_result: List[Dict[str, Any]] = []
+        for row in series_rows:
+            item = dict(row)
+            genres_raw = item.get("genres") or ""
+            item["genres_list"] = [g.strip() for g in genres_raw.split("|") if g.strip()]
+            series_result.append(item)
+
+        return {
+            "series": series_result,
+            "characters": [_parse_waifu_json_fields(dict(row)) for row in waifu_rows],
+        }
+
     # ═══════════════════════════════════════════════════════════════════
     #  Stats & Rank (ported from WaifuService logic)
     # ═══════════════════════════════════════════════════════════════════
