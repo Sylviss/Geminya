@@ -77,30 +77,8 @@ export const nwnlAcademyApi = {
     rename: (name: string) => api.post('/nwnl/academy/rename', { name }),
     reset: (confirmation: string) => api.post('/nwnl/academy/reset', { confirmation }),
     deleteAccount: (confirmation: string) => api.delete('/nwnl/academy/delete', { data: { confirmation } }),
-}
-
-export const nwnlCollectionApi = {
-    list: (params: {
-        name?: string
-        series?: string
-        element?: string
-        archetype?: string
-        rarity?: number
-        page?: number
-        page_size?: number
-        sort_by?: 'power' | 'star' | 'name'
-        sort_order?: 'asc' | 'desc'
-    }) => api.get('/nwnl/collection', { params }),
-    search: (params: { name?: string; series?: string; genre?: string; archetype?: string; element?: string; page?: number; page_size?: number }) =>
-        api.get('/nwnl/collection/search', { params }),
-    getWaifu: (waifuId: number) => api.get(`/nwnl/collection/${waifuId}`),
-    awaken: (waifuId: number) => api.post(`/nwnl/awaken/${waifuId}`),
-}
-
-export const nwnlDatabaseApi = {
-    list: (params: { page?: number; page_size?: number; query?: string }) => api.get('/nwnl/database', { params }),
-    series: (seriesId: number) => api.get(`/nwnl/database/series/${seriesId}`),
-    search: (query: string, limit = 20) => api.get('/nwnl/database/search', { params: { query, limit } }),
+    searchCollection: (params: { name?: string; series?: string; genre?: string; archetype?: string; element?: string; page?: number; page_size?: number }) =>
+        api.get('/nwnl/academy/search', { params }),
 }
 
 export const nwnlBannerApi = {
@@ -113,6 +91,7 @@ export const nwnlBannerApi = {
 export const nwnlSummonApi = {
     single: (bannerId?: number) => api.post('/nwnl/summon', { banner_id: bannerId ?? null, count: 1 }, { timeout: 60000 }),
     multi: (bannerId?: number) => api.post('/nwnl/summon', { banner_id: bannerId ?? null, count: 10 }, { timeout: 60000 }),
+    awaken: (waifuId: number) => api.post(`/nwnl/summon/awaken/${waifuId}`),
 }
 
 export default api
